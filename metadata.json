@@ -1,0 +1,6 @@
+{
+  "name": "Pasuruan Science Festival 2026 - Penilaian Sainspreneur",
+  "description": "Sistem Informasi Penilaian Lomba Sainspreneur Pasuruan Science Festival 2026 MGMP IPA SMP Kab. Pasuruan, penentuan 10 besar, manajemen juri, dan cetak lembar penilaian PDF per sekolah.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

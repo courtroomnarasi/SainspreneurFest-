@@ -1,0 +1,32 @@
+[build]
+  command = "npm install --legacy-peer-deps && npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_FLAGS = "--legacy-peer-deps"
+
+# Proxy opsional untuk Google Apps Script API guna menghindari kendala CORS
+[[redirects]]
+  from = "/api/gas"
+  to = "https://script.google.com/macros/s/AKfycbzu0sKXs_6zrBsQjAjnYYyEljVU7b4rNgfYinqpBkpF8m-hoEiWsdL6rhiGKZY8UNsyNA/exec"
+  status = 200
+  force = true
+
+# SPA Fallback Routing untuk React Vite
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Header Keamanan & Cache Aset Statis
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer-when-downgrade"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
