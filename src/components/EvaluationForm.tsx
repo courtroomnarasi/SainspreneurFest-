@@ -5,7 +5,12 @@ import { ARTICLE_RUBRIC, VIDEO_RUBRIC, FINAL_RUBRIC, ADMIN_CHECKLIST_TEMPLATE } 
 import { calculateSingleArticleScore, calculateSingleVideoScore, calculateSingleFinalScore } from '../utils/tieBreaker';
 import { generateSchoolPDF } from '../utils/pdfGenerator';
 import { DbLiveIndicator } from './DbLiveIndicator';
-import { INITIAL_TEAMS, GOOGLE_SPREADSHEET_ID, GOOGLE_SPREADSHEET_URL } from '../data/initialData';
+import {
+  INITIAL_TEAMS,
+  GOOGLE_SPREADSHEET_ID,
+  GOOGLE_SPREADSHEET_URL,
+  ACTIVE_DRIVE_SPREADSHEET_URL
+} from '../data/initialData';
 import { CloudSync } from '../utils/cloudSync';
 import { Storage } from '../utils/storage';
 
@@ -13,7 +18,7 @@ interface EvaluationFormProps {
   team: Team;
   judge: Judge;
   existingEvaluation?: Evaluation;
-  onSave: (evaluation: Evaluation) => void;
+  onSave: (evaluation: Evaluation) => void | Promise<void>;
   onBack: () => void;
   onOpenArticlePreview?: () => void;
   onOpenVideoPreview?: () => void;
@@ -170,19 +175,24 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     updatedAt: new Date().toISOString()
   });
 
-  const handleSaveEvaluation = (status: 'draft' | 'submitted') => {
+  const handleSaveEvaluation = async (status: 'draft' | 'submitted') => {
+    setIsSavingToDb(true);
     const evaluation = buildCurrentEvaluation(status);
-    onSave(evaluation);
+    await onSave(evaluation);
+    setIsSavingToDb(false);
   };
 
   const handleSaveDirectToDb = async () => {
     setIsSavingToDb(true);
     const evaluation = buildCurrentEvaluation('submitted');
     Storage.saveEvaluation(evaluation);
-    await CloudSync.pushSingleEvaluation(evaluation);
+    const res = await CloudSync.pushSingleEvaluation(evaluation);
     setIsSavingToDb(false);
+    const timeStr = new Date().toLocaleTimeString('id-ID');
     setDbSaveBanner(
-      `Tersimpan ke DB Spreadsheet ID: ${GOOGLE_SPREADSHEET_ID} (Skor Akhir: ${totalCalculatedOverall.toFixed(2)})`
+      res.success
+        ? `BERHASIL DISIMPAN KE DB SPREADSHEET (Pukul ${timeStr} • Skor Akhir: ${totalCalculatedOverall.toFixed(2)})`
+        : res.message
     );
   };
 
@@ -235,11 +245,12 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
             <span>Unduh PDF</span>
           </button>
           <button
+            disabled={isSavingToDb}
             onClick={() => handleSaveEvaluation('submitted')}
-            className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-700/20 flex items-center gap-1.5 transition-all cursor-pointer"
+            className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-700/20 flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
           >
             <Send size={15} />
-            <span>Kirim & Simpan DB</span>
+            <span>{isSavingToDb ? 'Menulis ke DB...' : 'Kirim & Simpan DB'}</span>
           </button>
         </div>
       </div>
@@ -250,16 +261,27 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
             <CheckCircle2 size={17} className="text-emerald-600 flex-shrink-0" />
             <span>{dbSaveBanner}</span>
           </div>
-          <a
-            href={GOOGLE_SPREADSHEET_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="px-3 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg inline-flex items-center gap-1.5"
-          >
-            <Database size={12} />
-            <span>Buka Spreadsheet</span>
-            <ExternalLink size={11} />
-          </a>
+          <div className="flex items-center gap-2">
+            <a
+              href={ACTIVE_DRIVE_SPREADSHEET_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="px-3 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg inline-flex items-center gap-1.5"
+            >
+              <Database size={12} />
+              <span>Buka DB Spreadsheet Aktif</span>
+              <ExternalLink size={11} />
+            </a>
+            <a
+              href={GOOGLE_SPREADSHEET_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="px-3 py-1 bg-white hover:bg-slate-50 text-emerald-900 border border-emerald-300 rounded-lg inline-flex items-center gap-1.5"
+            >
+              <span>ID 1iRtT9aZ...</span>
+              <ExternalLink size={11} />
+            </a>
+          </div>
         </div>
       )}
 

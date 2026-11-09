@@ -2,7 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Shield, UserPlus, Users, Trophy, Download, Plus, Trash2, Edit2, Key, CheckCircle, RefreshCw, FileText, Code2, ExternalLink, Palette, Sun, Sliders, Eye, Sparkles, Image as ImageIcon, SlidersHorizontal, Check, Database, CloudDownload, CloudUpload, Activity, Settings, Terminal, Copy, FileJson, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Judge, Team, Evaluation, TeamAggregatedScore, BackgroundConfig, DEFAULT_BACKGROUND_CONFIG } from '../types';
 import { generateSchoolPDF, generateTopTenSummaryPDF } from '../utils/pdfGenerator';
-import { GOOGLE_DRIVE_DB_URL, GOOGLE_SPREADSHEET_ID, GOOGLE_SPREADSHEET_URL } from '../data/initialData';
+import {
+  GOOGLE_DRIVE_DB_URL,
+  GOOGLE_SPREADSHEET_ID,
+  GOOGLE_SPREADSHEET_URL,
+  ACTIVE_DRIVE_SPREADSHEET_ID,
+  ACTIVE_DRIVE_SPREADSHEET_URL
+} from '../data/initialData';
 import { DbLiveIndicator } from './DbLiveIndicator';
 import { CloudSync, SyncLogItem, CloudConfig } from '../utils/cloudSync';
 import { Storage } from '../utils/storage';
@@ -183,7 +189,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [isClearingDummies, setIsClearingDummies] = useState(false);
 
   const handleClearAllDummyJudges = async () => {
-    if (!window.confirm('Bersihkan semua akun dummy (juri1, juri2, juri3) dari database Cloud dan lokal?')) return;
+    if (!window.confirm('Bersihkan semua akun dummy (juri1, juri2, juri3) dari DB Spreadsheet?')) return;
     setIsClearingDummies(true);
     await CloudSync.clearDummyJudgesOnDb();
     const filtered = judges.filter(j => {
@@ -193,7 +199,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
              id !== 'juri-1' && id !== 'juri-2' && id !== 'juri-3';
     });
     Storage.saveJudges(filtered);
-    setJudgeFormSuccess('Semua akun juri dummy berhasil dibersihkan dari database Cloud & lokal!');
+    setJudgeFormSuccess('Semua akun juri dummy berhasil dibersihkan dari DB Spreadsheet!');
     setIsClearingDummies(false);
     setTimeout(() => {
       window.location.reload();
@@ -221,7 +227,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     setNewJudgePassword('');
     setNewJudgeNip('');
     setNewJudgeInstitution('');
-    setJudgeFormSuccess(`Akun dewan juri "${newJudge.name}" berhasil dibuat dan langsung terhubung ke Cloud DB!`);
+    setJudgeFormSuccess(`Akun dewan juri "${newJudge.name}" berhasil dibuat dan langsung disimpan ke DB Spreadsheet!`);
     setTimeout(() => setJudgeFormSuccess(''), 5000);
   };
 
@@ -251,7 +257,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     setNewTeamLocal('');
     setNewTeamLeader('');
     setNewTeamMentor('');
-    setTeamFormSuccess(`Tim "${newTeam.name}" (${newTeam.school}) berhasil ditambahkan dan langsung terhubung ke database Cloud!`);
+    setTeamFormSuccess(`Tim "${newTeam.name}" (${newTeam.school}) berhasil ditambahkan dan langsung disimpan ke DB Spreadsheet!`);
     setTimeout(() => setTeamFormSuccess(''), 5000);
   };
 
@@ -350,14 +356,23 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             {syncFeedback.type === 'success' ? <CheckCircle2 size={18} className="text-emerald-600" /> : <AlertCircle size={18} className="text-rose-600" />}
             <span>{syncFeedback.message}</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <a
-              href={GOOGLE_SPREADSHEET_URL}
+              href={ACTIVE_DRIVE_SPREADSHEET_URL}
               target="_blank"
               rel="noreferrer"
               className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg inline-flex items-center gap-1.5 whitespace-nowrap"
             >
-              <span>Buka DB Spreadsheet ({GOOGLE_SPREADSHEET_ID.slice(0, 8)}...)</span>
+              <span>Buka DB Spreadsheet Aktif ({ACTIVE_DRIVE_SPREADSHEET_ID.slice(0, 8)}...)</span>
+              <ExternalLink size={12} />
+            </a>
+            <a
+              href={GOOGLE_SPREADSHEET_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="px-3 py-1.5 bg-white hover:bg-slate-50 text-emerald-900 border border-emerald-300 rounded-lg inline-flex items-center gap-1.5 whitespace-nowrap"
+            >
+              <span>Buka ID 1iRtT9aZ...</span>
               <ExternalLink size={12} />
             </a>
             <a
@@ -1571,7 +1586,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 <div>
                   <div className="flex flex-wrap items-center gap-2 mb-1.5">
                     <span className="text-[10px] uppercase font-mono tracking-wider font-extrabold text-emerald-300 bg-emerald-900/80 px-2.5 py-0.5 rounded-full border border-emerald-500/40">
-                      Cloud Web Config Active
+                      Direct Spreadsheet DB Active
                     </span>
                     {/* Indikator Hijau Berkedip */}
                     <DbLiveIndicator size="md" variant="glass" showLatency={true} />

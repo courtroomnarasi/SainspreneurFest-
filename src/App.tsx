@@ -34,7 +34,7 @@ export default function App() {
   const [isRubricModalOpen, setIsRubricModalOpen] = useState(false);
   const [isGasModalOpen, setIsGasModalOpen] = useState(false);
 
-  // Load persistent data & check cloud sync
+  // Load data directly from DB Spreadsheet on mount
   useEffect(() => {
     setTeams(Storage.getTeams());
     setJudges(Storage.getJudges());
@@ -45,17 +45,14 @@ export default function App() {
       setCurrentUser(session);
     }
 
-    // Auto-sync pull in background if enabled
-    const cfg = CloudSync.getConfig();
-    if (cfg.autoSyncEnabled) {
-      CloudSync.pullDataFromDb().then(res => {
-        if (res.success && (res.teams?.length || res.judges?.length)) {
-          setTeams(Storage.getTeams());
-          setJudges(Storage.getJudges());
-          setEvaluations(Storage.getEvaluations());
-        }
-      });
-    }
+    // Tarik data terbaru langsung dari DB Spreadsheet saat aplikasi dibuka
+    CloudSync.pullDataFromDb().then(res => {
+      if (res.success) {
+        setTeams(Storage.getTeams());
+        setJudges(Storage.getJudges());
+        setEvaluations(Storage.getEvaluations());
+      }
+    });
   }, []);
 
   // Compute live scores and ranking with official tie-breaker
@@ -82,62 +79,67 @@ export default function App() {
     setActiveTab('landing');
   };
 
-  // Evaluation Handler - Saves locally and pushes to Cloud DB
-  const handleSaveEvaluation = (evaluation: Evaluation) => {
+  // Evaluation Handler - Langsung simpan ke DB Spreadsheet dan perbarui state
+  const handleSaveEvaluation = async (evaluation: Evaluation) => {
     Storage.saveEvaluation(evaluation);
     setEvaluations(Storage.getEvaluations());
-    // Push single evaluation to Cloud DB
-    CloudSync.pushSingleEvaluation(evaluation);
+    await CloudSync.pushSingleEvaluation(evaluation);
+    setEvaluations(Storage.getEvaluations());
   };
 
-  // Judge Handlers - Saves locally and pushes to Cloud DB
-  const handleAddJudge = (newJudge: Judge) => {
+  // Judge Handlers - Langsung simpan ke DB Spreadsheet
+  const handleAddJudge = async (newJudge: Judge) => {
     const updated = [...judges, newJudge];
     setJudges(updated);
     Storage.saveJudges(updated);
-    // Push new judge to Cloud DB
-    CloudSync.pushNewJudge(newJudge);
+    await CloudSync.pushNewJudge(newJudge);
+    setJudges(Storage.getJudges());
   };
 
-  const handleUpdateJudge = (updatedJudge: Judge) => {
+  const handleUpdateJudge = async (updatedJudge: Judge) => {
     const updated = judges.map(j => (j.id === updatedJudge.id ? updatedJudge : j));
     setJudges(updated);
     Storage.saveJudges(updated);
-    CloudSync.pushNewJudge(updatedJudge);
+    await CloudSync.pushNewJudge(updatedJudge);
+    setJudges(Storage.getJudges());
   };
 
-  const handleDeleteJudge = (id: string) => {
+  const handleDeleteJudge = async (id: string) => {
     const judgeToDelete = judges.find(j => j.id === id);
-    if (window.confirm(`Yakin ingin menghapus akun juri "${judgeToDelete?.name || id}" dari sistem dan database?`)) {
+    if (window.confirm(`Yakin ingin menghapus akun juri "${judgeToDelete?.name || id}" dari DB Spreadsheet?`)) {
       const updated = judges.filter(j => j.id !== id);
       setJudges(updated);
       Storage.saveJudges(updated);
-      CloudSync.pushDeleteJudge(id, judgeToDelete?.username);
+      await CloudSync.pushDeleteJudge(id, judgeToDelete?.username);
+      setJudges(Storage.getJudges());
     }
   };
 
-  // Team Handlers - Tersambung Langsung ke DB Google Sheets
-  const handleAddTeam = (newTeam: Team) => {
+  // Team Handlers - Tersambung Langsung ke DB Spreadsheet
+  const handleAddTeam = async (newTeam: Team) => {
     const updated = [...teams, newTeam];
     setTeams(updated);
     Storage.saveTeams(updated);
-    CloudSync.pushNewTeam(newTeam);
+    await CloudSync.pushNewTeam(newTeam);
+    setTeams(Storage.getTeams());
   };
 
-  const handleUpdateTeam = (updatedTeam: Team) => {
+  const handleUpdateTeam = async (updatedTeam: Team) => {
     const updated = teams.map(t => (t.id === updatedTeam.id ? updatedTeam : t));
     setTeams(updated);
     Storage.saveTeams(updated);
-    CloudSync.pushUpdateTeam(updatedTeam);
+    await CloudSync.pushUpdateTeam(updatedTeam);
+    setTeams(Storage.getTeams());
   };
 
-  const handleDeleteTeam = (id: string) => {
+  const handleDeleteTeam = async (id: string) => {
     const teamToDelete = teams.find(t => t.id === id);
-    if (window.confirm(`Yakin ingin menghapus tim "${teamToDelete?.name || id}" dari sistem dan database?`)) {
+    if (window.confirm(`Yakin ingin menghapus tim "${teamToDelete?.name || id}" dari DB Spreadsheet?`)) {
       const updated = teams.filter(t => t.id !== id);
       setTeams(updated);
       Storage.saveTeams(updated);
-      CloudSync.pushDeleteTeam(id);
+      await CloudSync.pushDeleteTeam(id);
+      setTeams(Storage.getTeams());
     }
   };
 
@@ -147,7 +149,6 @@ export default function App() {
     setJudges(Storage.getJudges());
     setEvaluations(Storage.getEvaluations());
     setBgConfig(Storage.getBackgroundConfig());
-    alert('Seluruh data berhasil direset ke data default awal!');
   };
 
   const handleUpdateBgConfig = (newConfig: BackgroundConfig) => {
@@ -155,7 +156,7 @@ export default function App() {
     Storage.saveBackgroundConfig(newConfig);
   };
 
-  // Cloud Sync Two-Way Handlers
+  // DB Spreadsheet Two-Way Handlers
   const handlePullDataFromCloud = async () => {
     const res = await CloudSync.pullDataFromDb();
     if (res.success) {
@@ -167,7 +168,13 @@ export default function App() {
   };
 
   const handlePushDataToCloud = async () => {
-    return await CloudSync.pushAllDataToDb({ teams, judges, evaluations });
+    const res = await CloudSync.pushAllDataToDb({ teams, judges, evaluations });
+    if (res.success) {
+      setTeams(Storage.getTeams());
+      setJudges(Storage.getJudges());
+      setEvaluations(Storage.getEvaluations());
+    }
+    return res;
   };
 
   return (

@@ -143,25 +143,9 @@ export const Storage = {
       const data = localStorage.getItem(STORAGE_KEYS.EVALUATIONS);
       if (data) {
         const parsed: Evaluation[] = JSON.parse(data);
-        // Pastikan 19 penilaian resmi Juri 2 (Akhmad Nasor, M.Pd / juri-002) terintegrasi
-        let changed = false;
-        const merged = [...parsed];
-        for (const initEv of INITIAL_EVALUATIONS) {
-          const exists = merged.some(
-            e =>
-              e.teamId === initEv.teamId &&
-              (e.judgeId === initEv.judgeId ||
-                e.judgeName.toLowerCase().includes('akhmad nasor'))
-          );
-          if (!exists) {
-            merged.push(initEv);
-            changed = true;
-          }
+        if (parsed.length > 0) {
+          return parsed;
         }
-        if (changed) {
-          localStorage.setItem(STORAGE_KEYS.EVALUATIONS, JSON.stringify(merged));
-        }
-        return merged;
       }
     } catch (e) {
       console.error('Error reading evaluations:', e);
@@ -171,6 +155,10 @@ export const Storage = {
   },
 
   saveEvaluations(evals: Evaluation[]) {
+    localStorage.setItem(STORAGE_KEYS.EVALUATIONS, JSON.stringify(evals));
+  },
+
+  saveEvaluationsFromDb(evals: Evaluation[]) {
     localStorage.setItem(STORAGE_KEYS.EVALUATIONS, JSON.stringify(evals));
   },
 

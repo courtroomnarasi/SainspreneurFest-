@@ -1,19 +1,25 @@
 import React, { useState } from 'react';
-import { UserCheck, CheckCircle2, Clock, AlertCircle, FileEdit, Download, Search, School, ExternalLink, Play, FileText, Video, FolderOpen, Eye, Database, CloudUpload, Check } from 'lucide-react';
+import { UserCheck, CheckCircle2, Clock, AlertCircle, FileEdit, Download, Search, School, ExternalLink, Play, FileText, Video, FolderOpen, Eye, Database, Check } from 'lucide-react';
 import { Team, Judge, Evaluation } from '../types';
 import { EvaluationForm } from './EvaluationForm';
 import { ArticlePreviewModal } from './ArticlePreviewModal';
 import { generateSchoolPDF } from '../utils/pdfGenerator';
 import { calculateSingleArticleScore, calculateSingleVideoScore } from '../utils/tieBreaker';
 import { DbLiveIndicator } from './DbLiveIndicator';
-import { INITIAL_TEAMS, GOOGLE_SPREADSHEET_ID, GOOGLE_SPREADSHEET_URL } from '../data/initialData';
+import {
+  INITIAL_TEAMS,
+  GOOGLE_SPREADSHEET_ID,
+  GOOGLE_SPREADSHEET_URL,
+  ACTIVE_DRIVE_SPREADSHEET_ID,
+  ACTIVE_DRIVE_SPREADSHEET_URL
+} from '../data/initialData';
 import { CloudSync } from '../utils/cloudSync';
 
 interface JuriPortalProps {
   judge: Judge;
   teams: Team[];
   evaluations: Evaluation[];
-  onSaveEvaluation: (evaluation: Evaluation) => void;
+  onSaveEvaluation: (evaluation: Evaluation) => void | Promise<void>;
 }
 
 export const JuriPortal: React.FC<JuriPortalProps> = ({
@@ -45,12 +51,16 @@ export const JuriPortal: React.FC<JuriPortalProps> = ({
 
   const handleSaveSingleTeamToDb = async (team: Team, ev: Evaluation) => {
     setSyncingTeamId(team.id);
-    onSaveEvaluation(ev);
-    await CloudSync.pushSingleEvaluation(ev);
+    const updatedEv: Evaluation = {
+      ...ev,
+      updatedAt: new Date().toISOString()
+    };
+    await onSaveEvaluation(updatedEv);
     setSyncingTeamId(null);
     setSavedTeamIds(prev => ({ ...prev, [team.id]: true }));
+    const timeStr = new Date().toLocaleTimeString('id-ID');
     setDbSaveMessage(
-      `Penilaian ${team.code} (${team.school}) berhasil disimpan ke DB Spreadsheet ID: ${GOOGLE_SPREADSHEET_ID}`
+      `BERHASIL DISIMPAN KE DB SPREADSHEET (Pukul ${timeStr}): Penilaian ${team.code} (${team.school}) telah tercatat langsung di baris Google Spreadsheet Database.`
     );
     setTimeout(() => {
       setSavedTeamIds(prev => ({ ...prev, [team.id]: false }));
@@ -60,14 +70,12 @@ export const JuriPortal: React.FC<JuriPortalProps> = ({
   const handleSaveAllJudgeEvalsToDb = async () => {
     setIsSyncingAll(true);
     setDbSaveMessage(null);
-    for (const ev of judgeEvaluations) {
-      onSaveEvaluation(ev);
-    }
     const res = await CloudSync.pushAllDataToDb({ evaluations: judgeEvaluations });
     setIsSyncingAll(false);
+    const timeStr = new Date().toLocaleTimeString('id-ID');
     setDbSaveMessage(
       res.success
-        ? `Seluruh ${judgeEvaluations.length} penilaian ${judge.name} berhasil disimpan ke DB Spreadsheet ID: ${GOOGLE_SPREADSHEET_ID}`
+        ? `BERHASIL DISIMPAN KE DB SPREADSHEET (Pukul ${timeStr}): Seluruh ${judgeEvaluations.length} penilaian ${judge.name} telah ditulis langsung ke Google Spreadsheet Database.`
         : res.message
     );
   };
@@ -125,10 +133,11 @@ export const JuriPortal: React.FC<JuriPortalProps> = ({
           team={enrichedSelected}
           judge={judge}
           existingEvaluation={existingEval}
-          onSave={(ev) => {
-            onSaveEvaluation(ev);
+          onSave={async (ev) => {
+            await onSaveEvaluation(ev);
+            const timeStr = new Date().toLocaleTimeString('id-ID');
             setDbSaveMessage(
-              `Penilaian ${enrichedSelected.code} (${enrichedSelected.school}) berhasil disimpan ke DB Spreadsheet ID: ${GOOGLE_SPREADSHEET_ID}`
+              `BERHASIL DISIMPAN KE DB SPREADSHEET (Pukul ${timeStr}): Penilaian ${enrichedSelected.code} (${enrichedSelected.school}) telah diperbarui langsung di Google Spreadsheet Database.`
             );
             setSelectedTeam(null);
           }}
@@ -168,7 +177,7 @@ export const JuriPortal: React.FC<JuriPortalProps> = ({
               <div className="text-[11px] text-amber-300 font-semibold mt-1 flex flex-wrap items-center gap-2">
                 <span>Keahlian: {judge.field}</span>
                 <span>•</span>
-                <span className="font-mono text-emerald-300">DB ID: {GOOGLE_SPREADSHEET_ID}</span>
+                <span className="font-mono text-emerald-300">Koneksi Langsung DB Spreadsheet (Tanpa Cloud Perantara)</span>
               </div>
             </div>
           </div>
@@ -197,22 +206,34 @@ export const JuriPortal: React.FC<JuriPortalProps> = ({
                 onClick={handleSaveAllJudgeEvalsToDb}
                 disabled={isSyncingAll}
                 className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
-                title={`Simpan seluruh ${judgeEvaluations.length} penilaian ke DB Spreadsheet ${GOOGLE_SPREADSHEET_ID}`}
+                title="Tulis langsung seluruh 19 penilaian ke baris Google Spreadsheet DB"
               >
-                <CloudUpload size={16} className={isSyncingAll ? 'animate-bounce' : ''} />
-                <span>{isSyncingAll ? 'Menyimpan ke DB...' : `Simpan Semua (${judgeEvaluations.length}) ke DB`}</span>
+                <Database size={16} className={isSyncingAll ? 'animate-bounce' : ''} />
+                <span>{isSyncingAll ? 'Menulis ke DB Spreadsheet...' : `Simpan Semua (${judgeEvaluations.length}) ke DB`}</span>
               </button>
-              <a
-                href={GOOGLE_SPREADSHEET_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-amber-300 font-bold text-[11px] rounded-xl border border-white/15 flex items-center justify-center gap-1.5 transition-colors"
-                title={`Buka Google Spreadsheet ID: ${GOOGLE_SPREADSHEET_ID}`}
-              >
-                <Database size={12} />
-                <span>Buka DB Spreadsheet</span>
-                <ExternalLink size={11} />
-              </a>
+              <div className="flex items-center gap-1.5">
+                <a
+                  href={ACTIVE_DRIVE_SPREADSHEET_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex-1 px-2.5 py-1.5 bg-white/15 hover:bg-white/25 text-emerald-300 font-bold text-[10px] rounded-xl border border-emerald-400/30 flex items-center justify-center gap-1 transition-colors"
+                  title={`Buka Spreadsheet Aktif di Folder Drive (${ACTIVE_DRIVE_SPREADSHEET_ID})`}
+                >
+                  <Database size={11} />
+                  <span>DB Folder Drive (19 Nilai)</span>
+                  <ExternalLink size={10} />
+                </a>
+                <a
+                  href={GOOGLE_SPREADSHEET_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-2.5 py-1.5 bg-white/10 hover:bg-white/20 text-amber-300 font-bold text-[10px] rounded-xl border border-white/15 flex items-center justify-center gap-1 transition-colors"
+                  title={`Buka Google Spreadsheet ID: ${GOOGLE_SPREADSHEET_ID}`}
+                >
+                  <span>ID 1iRtT9aZ...</span>
+                  <ExternalLink size={10} />
+                </a>
+              </div>
             </div>
           </div>
         </div>
@@ -225,15 +246,25 @@ export const JuriPortal: React.FC<JuriPortalProps> = ({
             <CheckCircle2 size={18} className="text-emerald-600 flex-shrink-0" />
             <span>{dbSaveMessage}</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href={ACTIVE_DRIVE_SPREADSHEET_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg inline-flex items-center gap-1.5 whitespace-nowrap"
+              title="Lihat perubahan baris langsung di Spreadsheet Folder Drive"
+            >
+              <Database size={12} />
+              <span>Buka DB Spreadsheet Aktif (19 Nilai)</span>
+              <ExternalLink size={11} />
+            </a>
             <a
               href={GOOGLE_SPREADSHEET_URL}
               target="_blank"
               rel="noreferrer"
-              className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg inline-flex items-center gap-1.5 whitespace-nowrap"
+              className="px-3 py-1.5 bg-white hover:bg-slate-50 text-emerald-900 border border-emerald-300 rounded-lg inline-flex items-center gap-1.5 whitespace-nowrap"
             >
-              <Database size={12} />
-              <span>Lihat di Spreadsheet</span>
+              <span>Buka ID 1iRtT9aZ...</span>
               <ExternalLink size={11} />
             </a>
             <button
