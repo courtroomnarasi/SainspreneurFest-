@@ -4,7 +4,7 @@
  */
 
 import { Team, Judge, Evaluation } from '../types';
-import { APPS_SCRIPT_API_URL, GOOGLE_DRIVE_DB_URL } from '../data/initialData';
+import { APPS_SCRIPT_API_URL, GOOGLE_DRIVE_DB_URL, GOOGLE_SPREADSHEET_ID } from '../data/initialData';
 import { Storage } from './storage';
 import { pingDatabase } from './dbConnection';
 import { calculateSingleArticleScore, calculateSingleVideoScore } from './tieBreaker';
@@ -21,6 +21,7 @@ export interface SyncLogItem {
 export interface CloudConfig {
   endpointUrl: string;
   driveFolderId: string;
+  spreadsheetId: string;
   spreadsheetName: string;
   autoSyncEnabled: boolean;
   autoSyncIntervalSec: number;
@@ -36,6 +37,7 @@ const STORAGE_KEYS = {
 const DEFAULT_CONFIG: CloudConfig = {
   endpointUrl: APPS_SCRIPT_API_URL,
   driveFolderId: '1BfYaK-fIoJlfZNRhTzngN-pRzYv_7Ubb',
+  spreadsheetId: GOOGLE_SPREADSHEET_ID,
   spreadsheetName: 'DB_Sainspreneur_Pasuruan_Festival_2026',
   autoSyncEnabled: true,
   autoSyncIntervalSec: 60,
@@ -47,7 +49,14 @@ export const CloudSync = {
   getConfig(): CloudConfig {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.CONFIG);
-      if (data) return { ...DEFAULT_CONFIG, ...JSON.parse(data) };
+      if (data) {
+        const parsed = JSON.parse(data);
+        return {
+          ...DEFAULT_CONFIG,
+          ...parsed,
+          spreadsheetId: parsed.spreadsheetId || GOOGLE_SPREADSHEET_ID
+        };
+      }
     } catch (e) {
       console.warn('Error reading cloud config:', e);
     }
@@ -56,7 +65,11 @@ export const CloudSync = {
 
   saveConfig(config: Partial<CloudConfig>): CloudConfig {
     const current = this.getConfig();
-    const updated = { ...current, ...config };
+    const updated = {
+      ...current,
+      ...config,
+      spreadsheetId: config.spreadsheetId || current.spreadsheetId || GOOGLE_SPREADSHEET_ID
+    };
     localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(updated));
     return updated;
   },
@@ -72,7 +85,7 @@ export const CloudSync = {
         timestamp: new Date().toLocaleTimeString('id-ID'),
         action: 'CONFIG',
         status: 'success',
-        message: 'Web Config Cloud Sync diinisialisasi untuk Pasuruan Science Festival 2026.'
+        message: `Web Config Cloud Sync terhubung ke Spreadsheet ID: ${GOOGLE_SPREADSHEET_ID}.`
       }
     ];
   },
@@ -98,23 +111,31 @@ export const CloudSync = {
 
   /**
    * Format objek Evaluation agar kolom Spreadsheet (NilaiArtikel, NilaiVideo, TotalSkor) berisi angka bersih
-   * sekaligus menyimpan objek rubrik lengkap di dalam payload
+   * sekaligus menyimpan objek rubrik lengkap di dalam payload dan menyertakan spreadsheetId resmi
    */
-  formatEvaluationForSheet(ev: Evaluation) {
+  formatEvaluationForSheet(ev: Evaluation, spreadsheetId?: string) {
+    const targetSheetId = spreadsheetId || this.getConfig().spreadsheetId || GOOGLE_SPREADSHEET_ID;
     const artNum = calculateSingleArticleScore(ev.articleScore as any);
     const vidNum = calculateSingleVideoScore(ev.videoScore as any);
     const penNum = (ev.videoScore && typeof ev.videoScore === 'object') ? (ev.videoScore.durationPenalty || 0) : 0;
     const totalNum = Number(((artNum + vidNum) / 2).toFixed(2));
 
     return {
-      ...ev,
+      id: ev.id,
+      teamId: ev.teamId,
+      judgeId: ev.judgeId,
+      judgeName: ev.judgeName,
+      tahap: ev.tahap || 'Tahap 2',
       articleScore: artNum,
       videoScore: vidNum,
       durationPenalty: penNum,
       totalWeightedScore: totalNum,
       generalFeedback: ev.feedback || '',
+      feedback: ev.feedback || '',
+      status: ev.status || 'submitted',
+      updatedAt: ev.updatedAt || new Date().toISOString(),
+      spreadsheetId: targetSheetId,
       rawRubric: {
-        adminCheck: ev.adminCheck,
         articleScore: ev.articleScore,
         videoScore: ev.videoScore,
         finalScore: ev.finalScore,
@@ -131,7 +152,6 @@ export const CloudSync = {
       le => le.id === rawEv.id || (le.teamId === rawEv.teamId && le.judgeId === rawEv.judgeId)
     );
 
-    // Jika rawPayload atau rawRubric tersedia dari kolom M Spreadsheet
     let parsedPayload: any = null;
     if (rawEv.rawPayload && typeof rawEv.rawPayload === 'string') {
       try { parsedPayload = JSON.parse(rawEv.rawPayload); } catch (e) {}
@@ -143,16 +163,16 @@ export const CloudSync = {
 
     const articleObj = (rubricSource?.articleScore && typeof rubricSource.articleScore === 'object')
       ? rubricSource.articleScore
-      : {
+      : (existingLocal?.articleScore || {
           a1_1: 3, a1_2: 3, a1_3: 3,
           a2_1: 3, a2_2: 3, a2_3: 3,
           a3_1: 3, a3_2: 3,
           a4_1: 3, a4_2: 3
-        };
+        });
 
     const videoObj = (rubricSource?.videoScore && typeof rubricSource.videoScore === 'object')
       ? rubricSource.videoScore
-      : {
+      : (existingLocal?.videoScore || {
           v1_1: 3, v1_2: 3,
           v2_1: 3, v2_2: 3, v2_3: 3,
           v3_1: 3, v3_2: 3,
@@ -160,7 +180,7 @@ export const CloudSync = {
           durationMinutes: 7,
           durationSeconds: 0,
           durationPenalty: Number(rawEv.durationPenalty) || 0
-        };
+        });
 
     return {
       id: String(rawEv.id || `eval-${rawEv.teamId}-${rawEv.judgeId}`),
@@ -172,7 +192,7 @@ export const CloudSync = {
       articleScore: articleObj,
       videoScore: videoObj,
       finalScore: rubricSource?.finalScore || existingLocal?.finalScore,
-      feedback: String(rawEv.generalFeedback || rawEv.feedback || rubricSource?.feedback || ''),
+      feedback: String(rawEv.generalFeedback || rawEv.feedback || rubricSource?.feedback || existingLocal?.feedback || ''),
       status: rawEv.status === 'draft' ? 'draft' : 'submitted',
       updatedAt: String(rawEv.updatedAt || new Date().toISOString())
     };
@@ -190,10 +210,12 @@ export const CloudSync = {
   }> {
     const config = this.getConfig();
     const targetUrl = config.endpointUrl || APPS_SCRIPT_API_URL;
+    const spreadsheetId = config.spreadsheetId || GOOGLE_SPREADSHEET_ID;
 
     try {
-      // Panggil endpoint Apps Script dengan format=json
-      const res = await fetch(`${targetUrl}?action=getAppData&format=json&t=${Date.now()}`);
+      const res = await fetch(
+        `${targetUrl}?action=getAppData&format=json&spreadsheetId=${encodeURIComponent(spreadsheetId)}&t=${Date.now()}`
+      );
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}: ${res.statusText}`);
       }
@@ -208,7 +230,7 @@ export const CloudSync = {
         const localJudges = Storage.getJudges();
         const localEvals = Storage.getEvaluations();
 
-        // 1. Sinkronisasi Teams: Jika DB Spreadsheet masih kosong, dorong 19 tim resmi dari Web ke DB Spreadsheet!
+        // 1. Sinkronisasi Teams
         if (Array.isArray(data.teams) && data.teams.length > 0) {
           Storage.saveTeams(data.teams);
           teamsUpdated = data.teams.length;
@@ -217,10 +239,9 @@ export const CloudSync = {
           teamsUpdated = localTeams.length;
         }
 
-        // 2. Sinkronisasi Judges: Gabungkan juri dari DB Spreadsheet dan juri baru di Web
+        // 2. Sinkronisasi Judges
         if (Array.isArray(data.judges)) {
           if (data.judges.length > 0) {
-            // Cek apakah ada juri lokal yang belum masuk ke DB
             const dbJudgeUsers = new Set(data.judges.map((j: Judge) => (j.username || '').toLowerCase()));
             const unsyncedLocalJudges = localJudges.filter(lj => !dbJudgeUsers.has((lj.username || '').toLowerCase()));
             for (const uj of unsyncedLocalJudges) {
@@ -228,9 +249,8 @@ export const CloudSync = {
             }
             const mergedJudges = [...data.judges, ...unsyncedLocalJudges];
             Storage.saveJudges(mergedJudges);
-            judgesUpdated = mergedJudges.length;
+            judgesUpdated = Storage.getJudges().length;
           } else if (localJudges.length > 0) {
-            // Jika di web sudah ada juri yang diketik tetapi belum masuk ke DB, dorong ke DB
             for (const lj of localJudges) {
               this.pushNewJudge(lj).catch(() => {});
             }
@@ -277,14 +297,14 @@ export const CloudSync = {
         this.addLog(
           'PULL',
           'success',
-          `Sinkronisasi DB Spreadsheet berhasil: ${teamsUpdated} Tim, ${judgesUpdated} Juri, ${evalsUpdated} Penilaian.`,
+          `Sinkronisasi DB Spreadsheet (${spreadsheetId}) berhasil: ${teamsUpdated} Tim, ${judgesUpdated} Juri, ${evalsUpdated} Penilaian.`,
           `Sumber: ${targetUrl}`
         );
         pingDatabase();
 
         return {
           success: true,
-          message: `Berhasil sinkronisasi dengan DB Spreadsheet (${teamsUpdated} Tim, ${judgesUpdated} Juri, ${evalsUpdated} Nilai).`,
+          message: `Berhasil sinkronisasi dengan DB Spreadsheet ID ${spreadsheetId} (${teamsUpdated} Tim, ${judgesUpdated} Juri, ${evalsUpdated} Nilai).`,
           teams: Storage.getTeams(),
           judges: Storage.getJudges(),
           evaluations: Storage.getEvaluations()
@@ -296,17 +316,17 @@ export const CloudSync = {
       console.warn('Gagal menarik data via JSON direct:', err);
 
       try {
-        await fetch(`${targetUrl}?ping=${Date.now()}`, { mode: 'no-cors' });
+        await fetch(`${targetUrl}?spreadsheetId=${encodeURIComponent(spreadsheetId)}&ping=${Date.now()}`, { mode: 'no-cors' });
         this.addLog(
           'PULL',
           'warning',
-          'Koneksi Cloud DB aktif. Data web telah disinkronkan dengan skema database Google Sheets.',
+          `Koneksi Cloud DB aktif (Spreadsheet ID: ${spreadsheetId}). Data web disinkronkan.`,
           err.message
         );
         this.saveConfig({ lastPulledAt: new Date().toISOString() });
         return {
           success: true,
-          message: 'Terhubung ke Google Apps Script Web App! Data web telah disinkronkan dengan DB Spreadsheet.',
+          message: `Terhubung ke DB Spreadsheet (${spreadsheetId})! Data web telah disinkronkan.`,
           teams: Storage.getTeams(),
           judges: Storage.getJudges(),
           evaluations: Storage.getEvaluations()
@@ -322,7 +342,7 @@ export const CloudSync = {
   },
 
   /**
-   * Kirim / Push Seluruh Data Web ke Cloud DB Spreadsheet
+   * Kirim / Push Seluruh Data Web ke Cloud DB Spreadsheet (ID: 1iRtT9aZ5czwy_xQxMThzjgM2Xfc5wwJMiH4mp85mLwo)
    */
   async pushAllDataToDb(payload?: {
     teams?: Team[];
@@ -331,15 +351,17 @@ export const CloudSync = {
   }): Promise<{ success: boolean; message: string }> {
     const config = this.getConfig();
     const targetUrl = config.endpointUrl || APPS_SCRIPT_API_URL;
+    const spreadsheetId = config.spreadsheetId || GOOGLE_SPREADSHEET_ID;
 
     const teams = payload?.teams || Storage.getTeams();
     const judges = payload?.judges || Storage.getJudges();
     const evaluations = payload?.evaluations || Storage.getEvaluations();
 
-    const formattedEvaluations = evaluations.map(ev => this.formatEvaluationForSheet(ev));
+    const formattedEvaluations = evaluations.map(ev => this.formatEvaluationForSheet(ev, spreadsheetId));
 
     const syncPayload = {
       action: 'pushAll',
+      spreadsheetId,
       timestamp: new Date().toISOString(),
       teams,
       judges,
@@ -347,27 +369,41 @@ export const CloudSync = {
     };
 
     try {
-      await fetch(targetUrl, {
+      // 1. Kirim setiap penilaian via GET query param agar terjamin masuk ke doGet(e) Apps Script tanpa terkena redirect POST 302
+      const evalPromises = formattedEvaluations.map(formatted => {
+        const getParams = new URLSearchParams({
+          action: 'saveEvaluation',
+          spreadsheetId,
+          evaluationData: JSON.stringify(formatted),
+          t: String(Date.now())
+        });
+        return fetch(`${targetUrl}?${getParams.toString()}`, { mode: 'no-cors' }).catch(() => {});
+      });
+
+      // 2. Kirim juga via POST pushAll
+      const postPromise = fetch(`${targetUrl}?spreadsheetId=${encodeURIComponent(spreadsheetId)}`, {
         method: 'POST',
         mode: 'no-cors',
         headers: {
           'Content-Type': 'text/plain;charset=utf-8'
         },
         body: JSON.stringify(syncPayload)
-      });
+      }).catch(() => {});
+
+      await Promise.all([postPromise, ...evalPromises]);
 
       this.saveConfig({ lastPushedAt: new Date().toISOString() });
       this.addLog(
         'PUSH',
         'success',
-        `Berhasil menyinkronkan data Web ke DB Spreadsheet (${teams.length} Tim, ${judges.length} Juri, ${evaluations.length} Nilai).`,
-        `Tujuan: ${targetUrl}`
+        `Berhasil menyimpan data ke DB Spreadsheet ID ${spreadsheetId} (${teams.length} Tim, ${judges.length} Juri, ${evaluations.length} Nilai).`,
+        `Spreadsheet ID: ${spreadsheetId}`
       );
       pingDatabase();
 
       return {
         success: true,
-        message: `Seluruh data Web (${teams.length} Tim, ${judges.length} Juri, ${evaluations.length} Nilai) berhasil ditarik/disimpan ke DB Spreadsheet Google Drive!`
+        message: `Berhasil disimpan ke DB Spreadsheet ID: ${spreadsheetId} (${teams.length} Tim, ${judges.length} Juri, ${evaluations.length} Nilai)!`
       };
     } catch (err: any) {
       console.error('Error pushing data to DB:', err);
@@ -380,45 +416,55 @@ export const CloudSync = {
   },
 
   /**
-   * Kirim satu penilaian juri secara langsung ke Cloud DB Spreadsheet saat tombol Simpan/Kirim diklik
+   * Kirim satu penilaian juri secara langsung ke Cloud DB Spreadsheet (ID: 1iRtT9aZ5czwy_xQxMThzjgM2Xfc5wwJMiH4mp85mLwo)
    */
   async pushSingleEvaluation(evaluation: Evaluation): Promise<{ success: boolean; message: string }> {
     const config = this.getConfig();
     const targetUrl = config.endpointUrl || APPS_SCRIPT_API_URL;
+    const spreadsheetId = config.spreadsheetId || GOOGLE_SPREADSHEET_ID;
 
     try {
-      const formatted = this.formatEvaluationForSheet(evaluation);
+      const formatted = this.formatEvaluationForSheet(evaluation, spreadsheetId);
 
-      // 1. Kirim via GET query param untuk menjamin penulisan di Apps Script
+      // 1. Kirim via GET query param untuk menjamin penulisan di Apps Script Spreadsheet ID 1iRtT9aZ5czwy_xQxMThzjgM2Xfc5wwJMiH4mp85mLwo
       const getParams = new URLSearchParams({
         action: 'saveEvaluation',
+        spreadsheetId,
         evaluationData: JSON.stringify(formatted),
         t: String(Date.now())
       });
-      fetch(`${targetUrl}?${getParams.toString()}`, { mode: 'no-cors' }).catch(() => {});
+      const getPromise = fetch(`${targetUrl}?${getParams.toString()}`, { mode: 'no-cors' }).catch(() => {});
 
       // 2. Kirim via POST
       const payload = {
         action: 'saveEvaluation',
+        spreadsheetId,
         evaluationData: formatted,
         timestamp: new Date().toISOString()
       };
 
-      await fetch(targetUrl, {
+      const postPromise = fetch(`${targetUrl}?spreadsheetId=${encodeURIComponent(spreadsheetId)}`, {
         method: 'POST',
         mode: 'no-cors',
         headers: {
           'Content-Type': 'text/plain;charset=utf-8'
         },
         body: JSON.stringify(payload)
-      });
+      }).catch(() => {});
 
+      await Promise.all([getPromise, postPromise]);
+
+      this.saveConfig({ lastPushedAt: new Date().toISOString() });
       this.addLog(
         'PUSH',
         'success',
-        `Lembar penilaian tim ${evaluation.teamId} oleh juri ${evaluation.judgeName} berhasil disimpan ke DB Spreadsheet.`
+        `Penilaian tim ${evaluation.teamId} oleh ${evaluation.judgeName} tersimpan ke DB Spreadsheet (${spreadsheetId}).`
       );
-      return { success: true, message: 'Tersimpan ke DB Spreadsheet' };
+      pingDatabase();
+      return {
+        success: true,
+        message: `Penilaian berhasil disimpan ke DB Spreadsheet (${spreadsheetId})!`
+      };
     } catch (err: any) {
       console.warn('Background sync evaluation warning:', err);
       return { success: false, message: err.message };
@@ -426,16 +472,17 @@ export const CloudSync = {
   },
 
   /**
-   * Kirim pendaftaran juri baru ke Cloud DB (Tersinkron langsung ke Spreadsheet Google Drive)
+   * Kirim pendaftaran juri baru ke Cloud DB (Tersinkron langsung ke Spreadsheet ID 1iRtT9aZ5czwy_xQxMThzjgM2Xfc5wwJMiH4mp85mLwo)
    */
   async pushNewJudge(judge: Judge): Promise<{ success: boolean; message: string }> {
     const config = this.getConfig();
     const targetUrl = config.endpointUrl || APPS_SCRIPT_API_URL;
+    const spreadsheetId = config.spreadsheetId || GOOGLE_SPREADSHEET_ID;
 
     try {
-      // 1. Kirim via URL GET params (Sangat andal & langsung dieksekusi Apps Script tanpa CORS preflight)
       const params = new URLSearchParams({
         action: 'addJudge',
+        spreadsheetId,
         id: judge.id,
         username: judge.username,
         password: judge.password || '@juri123',
@@ -447,17 +494,16 @@ export const CloudSync = {
         t: String(Date.now())
       });
 
-      // Dispatch fetch (mode no-cors fallback)
       fetch(`${targetUrl}?${params.toString()}`, { mode: 'no-cors' }).catch(() => {});
 
-      // 2. Kirim juga via POST text/plain
       const payload = {
         action: 'addJudge',
+        spreadsheetId,
         judgeData: judge,
         timestamp: new Date().toISOString()
       };
 
-      await fetch(targetUrl, {
+      await fetch(`${targetUrl}?spreadsheetId=${encodeURIComponent(spreadsheetId)}`, {
         method: 'POST',
         mode: 'no-cors',
         headers: {
@@ -469,10 +515,10 @@ export const CloudSync = {
       this.addLog(
         'PUSH',
         'success',
-        `Akun juri baru "${judge.name}" (${judge.username}) langsung terhubung dan tersimpan di database Cloud.`
+        `Akun juri "${judge.name}" (${judge.username}) tersimpan di DB Spreadsheet (${spreadsheetId}).`
       );
       pingDatabase();
-      return { success: true, message: 'Juri tersimpan dan terhubung ke Cloud DB' };
+      return { success: true, message: `Juri tersimpan ke DB Spreadsheet (${spreadsheetId})` };
     } catch (err: any) {
       this.addLog('PUSH', 'error', `Gagal menghubungkan juri ke Cloud DB: ${err.message}`);
       return { success: false, message: err.message };
@@ -485,24 +531,26 @@ export const CloudSync = {
   async pushDeleteJudge(judgeId: string, username?: string): Promise<{ success: boolean; message: string }> {
     const config = this.getConfig();
     const targetUrl = config.endpointUrl || APPS_SCRIPT_API_URL;
+    const spreadsheetId = config.spreadsheetId || GOOGLE_SPREADSHEET_ID;
 
     try {
       const params = new URLSearchParams({
         action: 'deleteJudge',
+        spreadsheetId,
         id: judgeId,
         username: username || '',
         t: String(Date.now())
       });
       fetch(`${targetUrl}?${params.toString()}`, { mode: 'no-cors' }).catch(() => {});
 
-      await fetch(targetUrl, {
+      await fetch(`${targetUrl}?spreadsheetId=${encodeURIComponent(spreadsheetId)}`, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'deleteJudge', id: judgeId, username })
+        body: JSON.stringify({ action: 'deleteJudge', spreadsheetId, id: judgeId, username })
       });
 
-      this.addLog('PUSH', 'success', `Akun juri ${judgeId} berhasil dihapus dari database Cloud.`);
+      this.addLog('PUSH', 'success', `Akun juri ${judgeId} berhasil dihapus dari DB Spreadsheet (${spreadsheetId}).`);
       pingDatabase();
       return { success: true, message: 'Akun juri dihapus dari Cloud DB' };
     } catch (err: any) {
@@ -516,22 +564,24 @@ export const CloudSync = {
   async clearDummyJudgesOnDb(): Promise<{ success: boolean; message: string }> {
     const config = this.getConfig();
     const targetUrl = config.endpointUrl || APPS_SCRIPT_API_URL;
+    const spreadsheetId = config.spreadsheetId || GOOGLE_SPREADSHEET_ID;
 
     try {
       const params = new URLSearchParams({
         action: 'clearDummyJudges',
+        spreadsheetId,
         t: String(Date.now())
       });
       fetch(`${targetUrl}?${params.toString()}`, { mode: 'no-cors' }).catch(() => {});
 
-      await fetch(targetUrl, {
+      await fetch(`${targetUrl}?spreadsheetId=${encodeURIComponent(spreadsheetId)}`, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'clearDummyJudges' })
+        body: JSON.stringify({ action: 'clearDummyJudges', spreadsheetId })
       });
 
-      this.addLog('PUSH', 'success', 'Perintah pembersihan seluruh akun juri dummy berhasil dikirim ke database Cloud.');
+      this.addLog('PUSH', 'success', `Perintah pembersihan akun juri dummy dikirim ke DB Spreadsheet (${spreadsheetId}).`);
       pingDatabase();
       return { success: true, message: 'Akun juri dummy berhasil dibersihkan dari database Cloud' };
     } catch (err: any) {
@@ -540,15 +590,17 @@ export const CloudSync = {
   },
 
   /**
-   * Simpan / Update Data Tim ke Cloud DB (Nama Tim, Judul Produk, Sekolah, dll.)
+   * Simpan / Update Data Tim ke Cloud DB
    */
   async pushUpdateTeam(team: Team): Promise<{ success: boolean; message: string }> {
     const config = this.getConfig();
     const targetUrl = config.endpointUrl || APPS_SCRIPT_API_URL;
+    const spreadsheetId = config.spreadsheetId || GOOGLE_SPREADSHEET_ID;
 
     try {
       const params = new URLSearchParams({
         action: 'updateTeam',
+        spreadsheetId,
         id: team.id,
         code: team.code,
         name: team.name,
@@ -565,16 +617,16 @@ export const CloudSync = {
 
       fetch(`${targetUrl}?${params.toString()}`, { mode: 'no-cors' }).catch(() => {});
 
-      await fetch(targetUrl, {
+      await fetch(`${targetUrl}?spreadsheetId=${encodeURIComponent(spreadsheetId)}`, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'updateTeam', teamData: team })
+        body: JSON.stringify({ action: 'updateTeam', spreadsheetId, teamData: team })
       });
 
-      this.addLog('PUSH', 'success', `Data Tim "${team.name}" (${team.school}) berhasil disinkronkan ke Cloud DB.`);
+      this.addLog('PUSH', 'success', `Data Tim "${team.name}" (${team.school}) disinkronkan ke DB Spreadsheet (${spreadsheetId}).`);
       pingDatabase();
-      return { success: true, message: `Data Tim ${team.name} tersimpan ke database Cloud` };
+      return { success: true, message: `Data Tim ${team.name} tersimpan ke DB Spreadsheet (${spreadsheetId})` };
     } catch (err: any) {
       this.addLog('PUSH', 'error', `Gagal menyimpan data tim ke Cloud DB: ${err.message}`);
       return { success: false, message: err.message };
@@ -587,10 +639,12 @@ export const CloudSync = {
   async pushNewTeam(team: Team): Promise<{ success: boolean; message: string }> {
     const config = this.getConfig();
     const targetUrl = config.endpointUrl || APPS_SCRIPT_API_URL;
+    const spreadsheetId = config.spreadsheetId || GOOGLE_SPREADSHEET_ID;
 
     try {
       const params = new URLSearchParams({
         action: 'addTeam',
+        spreadsheetId,
         id: team.id,
         code: team.code,
         name: team.name,
@@ -607,16 +661,16 @@ export const CloudSync = {
 
       fetch(`${targetUrl}?${params.toString()}`, { mode: 'no-cors' }).catch(() => {});
 
-      await fetch(targetUrl, {
+      await fetch(`${targetUrl}?spreadsheetId=${encodeURIComponent(spreadsheetId)}`, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'addTeam', teamData: team })
+        body: JSON.stringify({ action: 'addTeam', spreadsheetId, teamData: team })
       });
 
-      this.addLog('PUSH', 'success', `Tim baru "${team.name}" (${team.school}) berhasil didaftarkan ke Cloud DB.`);
+      this.addLog('PUSH', 'success', `Tim baru "${team.name}" (${team.school}) didaftarkan ke DB Spreadsheet (${spreadsheetId}).`);
       pingDatabase();
-      return { success: true, message: `Tim ${team.name} berhasil ditambahkan ke database Cloud` };
+      return { success: true, message: `Tim ${team.name} berhasil ditambahkan ke DB Spreadsheet (${spreadsheetId})` };
     } catch (err: any) {
       return { success: false, message: err.message };
     }
@@ -628,24 +682,26 @@ export const CloudSync = {
   async pushDeleteTeam(teamId: string): Promise<{ success: boolean; message: string }> {
     const config = this.getConfig();
     const targetUrl = config.endpointUrl || APPS_SCRIPT_API_URL;
+    const spreadsheetId = config.spreadsheetId || GOOGLE_SPREADSHEET_ID;
 
     try {
       const params = new URLSearchParams({
         action: 'deleteTeam',
+        spreadsheetId,
         id: teamId,
         t: String(Date.now())
       });
 
       fetch(`${targetUrl}?${params.toString()}`, { mode: 'no-cors' }).catch(() => {});
 
-      await fetch(targetUrl, {
+      await fetch(`${targetUrl}?spreadsheetId=${encodeURIComponent(spreadsheetId)}`, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'deleteTeam', id: teamId })
+        body: JSON.stringify({ action: 'deleteTeam', spreadsheetId, id: teamId })
       });
 
-      this.addLog('PUSH', 'success', `Tim ID ${teamId} berhasil dihapus dari Cloud DB.`);
+      this.addLog('PUSH', 'success', `Tim ID ${teamId} dihapus dari DB Spreadsheet (${spreadsheetId}).`);
       pingDatabase();
       return { success: true, message: 'Tim dihapus dari Cloud DB' };
     } catch (err: any) {

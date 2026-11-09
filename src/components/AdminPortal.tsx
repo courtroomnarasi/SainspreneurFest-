@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Shield, UserPlus, Users, Trophy, Download, Plus, Trash2, Edit2, Key, CheckCircle, RefreshCw, FileText, Code2, ExternalLink, Palette, Sun, Sliders, Eye, Sparkles, Image as ImageIcon, SlidersHorizontal, Check, Database, CloudDownload, CloudUpload, Activity, Settings, Terminal, Copy, FileJson, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Judge, Team, Evaluation, TeamAggregatedScore, BackgroundConfig, DEFAULT_BACKGROUND_CONFIG } from '../types';
 import { generateSchoolPDF, generateTopTenSummaryPDF } from '../utils/pdfGenerator';
-import { GOOGLE_DRIVE_DB_URL } from '../data/initialData';
+import { GOOGLE_DRIVE_DB_URL, GOOGLE_SPREADSHEET_ID, GOOGLE_SPREADSHEET_URL } from '../data/initialData';
 import { DbLiveIndicator } from './DbLiveIndicator';
 import { CloudSync, SyncLogItem, CloudConfig } from '../utils/cloudSync';
 import { Storage } from '../utils/storage';
@@ -350,15 +350,26 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             {syncFeedback.type === 'success' ? <CheckCircle2 size={18} className="text-emerald-600" /> : <AlertCircle size={18} className="text-rose-600" />}
             <span>{syncFeedback.message}</span>
           </div>
-          <a
-            href={GOOGLE_DRIVE_DB_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-lg inline-flex items-center gap-1.5 whitespace-nowrap"
-          >
-            <span>Buka Folder DB Drive</span>
-            <ExternalLink size={12} />
-          </a>
+          <div className="flex items-center gap-2">
+            <a
+              href={GOOGLE_SPREADSHEET_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg inline-flex items-center gap-1.5 whitespace-nowrap"
+            >
+              <span>Buka DB Spreadsheet ({GOOGLE_SPREADSHEET_ID.slice(0, 8)}...)</span>
+              <ExternalLink size={12} />
+            </a>
+            <a
+              href={GOOGLE_DRIVE_DB_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-lg inline-flex items-center gap-1.5 whitespace-nowrap"
+            >
+              <span>Buka Folder DB Drive</span>
+              <ExternalLink size={12} />
+            </a>
+          </div>
         </div>
       )}
 
@@ -699,7 +710,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               <div className="sm:col-span-3 flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
                 <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
                   <Database size={13} className="text-emerald-600" />
-                  <span>Akun tersimpan permanen di Google Drive Spreadsheet <strong>DB_Sainspreneur_Pasuruan_Festival_2026</strong>.</span>
+                  <span>Akun tersimpan permanen di Google Spreadsheet ID <strong>{GOOGLE_SPREADSHEET_ID}</strong>.</span>
                 </div>
                 <button
                   type="submit"
@@ -1757,6 +1768,34 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 </p>
               </div>
 
+              {/* ID Spreadsheet Database */}
+              <div className="md:col-span-2">
+                <label className="block text-xs font-bold text-slate-800 mb-1">
+                  Google Spreadsheet Database ID <span className="text-emerald-600">(Aktif & Terhubung)</span>
+                </label>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="text"
+                    value={cloudCfg.spreadsheetId || GOOGLE_SPREADSHEET_ID}
+                    onChange={(e) => setCloudCfg({ ...cloudCfg, spreadsheetId: e.target.value })}
+                    className="flex-1 text-xs p-3 font-mono border border-emerald-400 bg-emerald-50/40 rounded-xl focus:ring-2 focus:ring-emerald-600 focus:outline-none font-bold text-slate-900"
+                    placeholder="1iRtT9aZ5czwy_xQxMThzjgM2Xfc5wwJMiH4mp85mLwo"
+                  />
+                  <a
+                    href={`https://docs.google.com/spreadsheets/d/${cloudCfg.spreadsheetId || GOOGLE_SPREADSHEET_ID}/edit`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-4 py-3 bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 whitespace-nowrap transition-colors shadow-sm"
+                  >
+                    <span>Buka Spreadsheet DB</span>
+                    <ExternalLink size={13} />
+                  </a>
+                </div>
+                <p className="text-[11px] text-emerald-700 font-medium mt-1">
+                  Seluruh klik tombol "Simpan DB" dari Portal Juri maupun Admin otomatis tersimpan ke Spreadsheet ID: <code>{cloudCfg.spreadsheetId || GOOGLE_SPREADSHEET_ID}</code>
+                </p>
+              </div>
+
               {/* ID Folder Google Drive */}
               <div>
                 <label className="block text-xs font-bold text-slate-800 mb-1">
@@ -1791,7 +1830,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   className="w-full text-xs p-3 font-mono border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 focus:outline-none"
                 />
                 <p className="text-[11px] text-slate-400 mt-1">
-                  Spreadsheet akan otomatis dibuat di folder Google Drive jika belum ada.
+                  Terhubung langsung ke ID Spreadsheet <code>{GOOGLE_SPREADSHEET_ID}</code>.
                 </p>
               </div>
 

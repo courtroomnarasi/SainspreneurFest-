@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { X, Code2, Copy, Check, Download, ExternalLink, Folder } from 'lucide-react';
-import { GOOGLE_DRIVE_DB_URL } from '../data/initialData';
+import { X, Code2, Copy, Check, Download, ExternalLink, Folder, Database } from 'lucide-react';
+import { GOOGLE_DRIVE_DB_URL, GOOGLE_SPREADSHEET_ID, GOOGLE_SPREADSHEET_URL } from '../data/initialData';
 
 interface GasExportModalProps {
   isOpen: boolean;
@@ -20,10 +20,13 @@ export const GasExportModal: React.FC<GasExportModalProps> = ({ isOpen, onClose 
  *
  * Folder Database Google Drive:
  * https://drive.google.com/drive/folders/1BfYaK-fIoJlfZNRhTzngN-pRzYv_7Ubb?usp=sharing
+ * Spreadsheet Database ID:
+ * ${GOOGLE_SPREADSHEET_ID}
  */
 
 const CONFIG = {
   DRIVE_FOLDER_ID: '1BfYaK-fIoJlfZNRhTzngN-pRzYv_7Ubb',
+  SPREADSHEET_ID: '${GOOGLE_SPREADSHEET_ID}',
   SPREADSHEET_NAME: 'DB_Sainspreneur_Pasuruan_Festival_2026',
   ADMIN_USER: 'admin',
   ADMIN_PASS: '@1',
@@ -44,6 +47,12 @@ function include(filename) {
 }
 
 function getOrCreateDatabaseSheet() {
+  try {
+    var ssById = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    initSheets(ssById);
+    return ssById;
+  } catch (errById) {}
+
   try {
     var folder = DriveApp.getFolderById(CONFIG.DRIVE_FOLDER_ID);
     var files = folder.getFilesByName(CONFIG.SPREADSHEET_NAME);
@@ -79,6 +88,7 @@ function apiGetAppData() {
   var ss = getOrCreateDatabaseSheet();
   return {
     success: true,
+    spreadsheetId: CONFIG.SPREADSHEET_ID,
     folderId: CONFIG.DRIVE_FOLDER_ID,
     folderUrl: 'https://drive.google.com/drive/folders/' + CONFIG.DRIVE_FOLDER_ID
   };
@@ -145,24 +155,35 @@ function apiGetAppData() {
           </button>
         </div>
 
-        {/* Drive Info Ribbon */}
+        {/* Drive & Spreadsheet Info Ribbon */}
         <div className="bg-emerald-900/40 p-4 px-6 border-b border-emerald-800/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2 text-emerald-200">
-            <Folder size={16} className="text-amber-400" />
-            <span>Folder Database Google Drive:</span>
+          <div className="flex flex-wrap items-center gap-2 text-emerald-200">
+            <Database size={16} className="text-amber-400" />
+            <span>ID Spreadsheet DB:</span>
             <code className="text-amber-300 font-mono text-[11px] bg-black/30 px-2 py-0.5 rounded">
-              1BfYaK-fIoJlfZNRhTzngN-pRzYv_7Ubb
+              {GOOGLE_SPREADSHEET_ID}
             </code>
           </div>
-          <a
-            href={GOOGLE_DRIVE_DB_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="text-xs font-bold text-amber-300 hover:text-white inline-flex items-center gap-1 underline"
-          >
-            <span>Buka Google Drive</span>
-            <ExternalLink size={12} />
-          </a>
+          <div className="flex items-center gap-3">
+            <a
+              href={GOOGLE_SPREADSHEET_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs font-bold text-amber-300 hover:text-white inline-flex items-center gap-1 underline"
+            >
+              <span>Buka Spreadsheet DB</span>
+              <ExternalLink size={12} />
+            </a>
+            <a
+              href={GOOGLE_DRIVE_DB_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs font-bold text-emerald-200 hover:text-white inline-flex items-center gap-1 underline"
+            >
+              <span>Folder Drive</span>
+              <ExternalLink size={12} />
+            </a>
+          </div>
         </div>
 
         {/* Tab & Action Bar */}

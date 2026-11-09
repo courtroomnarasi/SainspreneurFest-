@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, AlertTriangle, Clock, Save, Send, Download, ArrowLeft, Info, HelpCircle, ExternalLink, Play, FileText, FolderOpen, Eye } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Clock, Save, Send, Download, ArrowLeft, Info, HelpCircle, ExternalLink, Play, FileText, FolderOpen, Eye, Database, Check } from 'lucide-react';
 import { Team, Judge, Evaluation, AdminCheckItem, ArticleScore, VideoScore, FinalScore } from '../types';
 import { ARTICLE_RUBRIC, VIDEO_RUBRIC, FINAL_RUBRIC, ADMIN_CHECKLIST_TEMPLATE } from '../data/rubricData';
 import { calculateSingleArticleScore, calculateSingleVideoScore, calculateSingleFinalScore } from '../utils/tieBreaker';
 import { generateSchoolPDF } from '../utils/pdfGenerator';
 import { DbLiveIndicator } from './DbLiveIndicator';
-import { INITIAL_TEAMS } from '../data/initialData';
+import { INITIAL_TEAMS, GOOGLE_SPREADSHEET_ID, GOOGLE_SPREADSHEET_URL } from '../data/initialData';
+import { CloudSync } from '../utils/cloudSync';
+import { Storage } from '../utils/storage';
 
 interface EvaluationFormProps {
   team: Team;
@@ -56,6 +58,8 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     : (team.videoThumbnailUrl || canonical?.videoThumbnailUrl || '');
 
   const [inlineMediaMode, setInlineMediaMode] = useState<'none' | 'video' | 'article'>('none');
+  const [isSavingToDb, setIsSavingToDb] = useState(false);
+  const [dbSaveBanner, setDbSaveBanner] = useState<string | null>(null);
 
   // Bagian A State
   const [adminChecks, setAdminChecks] = useState<AdminCheckItem[]>(
@@ -151,49 +155,49 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     );
   };
 
+  const buildCurrentEvaluation = (status: 'draft' | 'submitted'): Evaluation => ({
+    id: existingEvaluation?.id || `eval-${team.id}-${judge.id}`,
+    teamId: team.id,
+    judgeId: existingEvaluation?.judgeId || judge.id,
+    judgeName: judge.name,
+    tahap: team.tahap,
+    adminCheck: adminChecks,
+    articleScore,
+    videoScore,
+    finalScore: team.tahap === 'Final' ? finalScore : undefined,
+    feedback,
+    status,
+    updatedAt: new Date().toISOString()
+  });
+
   const handleSaveEvaluation = (status: 'draft' | 'submitted') => {
-    const evaluation: Evaluation = {
-      id: existingEvaluation?.id || `eval-${team.id}-${judge.id}`,
-      teamId: team.id,
-      judgeId: judge.id,
-      judgeName: judge.name,
-      tahap: team.tahap,
-      adminCheck: adminChecks,
-      articleScore,
-      videoScore,
-      finalScore: team.tahap === 'Final' ? finalScore : undefined,
-      feedback,
-      status,
-      updatedAt: new Date().toISOString()
-    };
+    const evaluation = buildCurrentEvaluation(status);
     onSave(evaluation);
   };
 
+  const handleSaveDirectToDb = async () => {
+    setIsSavingToDb(true);
+    const evaluation = buildCurrentEvaluation('submitted');
+    Storage.saveEvaluation(evaluation);
+    await CloudSync.pushSingleEvaluation(evaluation);
+    setIsSavingToDb(false);
+    setDbSaveBanner(
+      `Tersimpan ke DB Spreadsheet ID: ${GOOGLE_SPREADSHEET_ID} (Skor Akhir: ${totalCalculatedOverall.toFixed(2)})`
+    );
+  };
+
   const handleDownloadPDF = async () => {
-    const currentEvaluation: Evaluation = {
-      id: existingEvaluation?.id || `eval-${team.id}-${judge.id}`,
-      teamId: team.id,
-      judgeId: judge.id,
-      judgeName: judge.name,
-      tahap: team.tahap,
-      adminCheck: adminChecks,
-      articleScore,
-      videoScore,
-      finalScore,
-      feedback,
-      status: 'submitted',
-      updatedAt: new Date().toISOString()
-    };
+    const currentEvaluation = buildCurrentEvaluation('submitted');
     await generateSchoolPDF(team, currentEvaluation, [currentEvaluation], judge);
   };
 
   return (
     <div className="max-w-5xl mx-auto my-6 px-4">
       {/* Top Bar Navigation */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
         <button
           onClick={onBack}
-          className="inline-flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-blue-900 bg-white border border-slate-200 px-3 py-2 rounded-xl shadow-xs transition-colors"
+          className="inline-flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-blue-900 bg-white border border-slate-200 px-3 py-2 rounded-xl shadow-xs transition-colors cursor-pointer"
         >
           <ArrowLeft size={16} />
           <span>Kembali ke Daftar Tim</span>
@@ -210,23 +214,54 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
             <Save size={15} />
             <span>Simpan Draft</span>
           </button>
+
+          <button
+            type="button"
+            disabled={isSavingToDb}
+            onClick={handleSaveDirectToDb}
+            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+            title={`Simpan langsung ke DB Spreadsheet ID: ${GOOGLE_SPREADSHEET_ID}`}
+          >
+            <Database size={15} />
+            <span>{isSavingToDb ? 'Menyimpan ke DB...' : 'Simpan ke DB Spreadsheet'}</span>
+          </button>
+
           <button
             onClick={handleDownloadPDF}
-            className="px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-xs rounded-xl border border-blue-300 flex items-center gap-1.5 transition-colors"
+            className="px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-xs rounded-xl border border-blue-300 flex items-center gap-1.5 transition-colors cursor-pointer"
             title="Cetak/Unduh Lembar Penilaian Resmi Sekolah dalam Bentuk PDF"
           >
             <Download size={15} />
-            <span>Unduh PDF Lembar Penilaian</span>
+            <span>Unduh PDF</span>
           </button>
           <button
             onClick={() => handleSaveEvaluation('submitted')}
-            className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-700/20 flex items-center gap-1.5 transition-all"
+            className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-700/20 flex items-center gap-1.5 transition-all cursor-pointer"
           >
             <Send size={15} />
-            <span>Kirim Penilaian Resmi</span>
+            <span>Kirim & Simpan DB</span>
           </button>
         </div>
       </div>
+
+      {dbSaveBanner && (
+        <div className="mb-4 p-3.5 rounded-2xl bg-emerald-50 border border-emerald-300 text-emerald-950 flex flex-wrap items-center justify-between gap-2 text-xs font-bold shadow-xs">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 size={17} className="text-emerald-600 flex-shrink-0" />
+            <span>{dbSaveBanner}</span>
+          </div>
+          <a
+            href={GOOGLE_SPREADSHEET_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="px-3 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg inline-flex items-center gap-1.5"
+          >
+            <Database size={12} />
+            <span>Buka Spreadsheet</span>
+            <ExternalLink size={11} />
+          </a>
+        </div>
+      )}
 
       {/* Header Info Tim */}
       <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm mb-6">

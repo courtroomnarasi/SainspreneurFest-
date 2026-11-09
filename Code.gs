@@ -5,15 +5,20 @@
  *
  * Folder Database Google Drive:
  * https://drive.google.com/drive/folders/1BfYaK-fIoJlfZNRhTzngN-pRzYv_7Ubb?usp=sharing
+ * Spreadsheet Database ID:
+ * 1iRtT9aZ5czwy_xQxMThzjgM2Xfc5wwJMiH4mp85mLwo
  */
 
 const CONFIG = {
   DRIVE_FOLDER_ID: '1BfYaK-fIoJlfZNRhTzngN-pRzYv_7Ubb',
+  SPREADSHEET_ID: '1iRtT9aZ5czwy_xQxMThzjgM2Xfc5wwJMiH4mp85mLwo',
   SPREADSHEET_NAME: 'DB_Sainspreneur_Pasuruan_Festival_2026',
   ADMIN_USER: 'admin',
   ADMIN_PASS: '@1',
   APP_TITLE: 'Pasuruan Science Festival 2026 - Penilaian Sainspreneur'
 };
+
+var ACTIVE_SPREADSHEET_ID = CONFIG.SPREADSHEET_ID;
 
 /**
  * Handle HTTP GET Request
@@ -22,6 +27,9 @@ const CONFIG = {
 function doGet(e) {
   var p = (e && e.parameter) ? e.parameter : {};
   var action = p.action;
+  if (p.spreadsheetId) {
+    ACTIVE_SPREADSHEET_ID = String(p.spreadsheetId).trim();
+  }
 
   // 1. Ambil data aplikasi
   if (action === 'getAppData' || p.format === 'json') {
@@ -117,6 +125,9 @@ function doGet(e) {
   if (action === 'saveEvaluation' && p.evaluationData) {
     try {
       var evData = JSON.parse(p.evaluationData);
+      if (evData && evData.spreadsheetId) {
+        ACTIVE_SPREADSHEET_ID = String(evData.spreadsheetId).trim();
+      }
       var evRes = apiSaveEvaluation(evData);
       return createJsonResponse(evRes);
     } catch (err) {
@@ -150,18 +161,10 @@ function doGet(e) {
       '<span class="badge">Google Apps Script Backend Active</span>' +
       '<h1>Pasuruan Science Festival 2026</h1>' +
       '<p><strong>Lomba Sainspreneur MGMP IPA SMP Kab. Pasuruan</strong></p>' +
-      '<p>Backend database Google Apps Script dan integrasi Google Drive telah aktif dan siap melayani 19 sekolah peserta resmi.</p>' +
+      '<p>Backend database Google Apps Script terhubung ke Spreadsheet ID: <code>' + CONFIG.SPREADSHEET_ID + '</code></p>' +
       '<div style="margin:20px 0;">' +
       '<a class="btn btn-amber" href="?format=json" target="_blank">Lihat Output Data JSON</a>' +
-      '<a class="btn" href="https://drive.google.com/drive/folders/' + CONFIG.DRIVE_FOLDER_ID + '" target="_blank">Buka Folder Google Drive</a>' +
-      '</div>' +
-      '<div class="guide">' +
-      '<strong>Langkah untuk Mengaktifkan UI Penuh di Apps Script:</strong>' +
-      '<ol style="margin:8px 0 0 16px;padding:0;">' +
-      '<li>Di Editor Google Apps Script, klik tombol <strong>+</strong> di panel File lalu pilih <strong>HTML</strong>.</li>' +
-      '<li>Beri nama file: <strong>Index</strong> (tanpa ekstensi .html).</li>' +
-      '<li>Salin seluruh kode dari file <code>gas_Index.html</code> lalu klik Simpan dan Deploy Ulang.</li>' +
-      '</ol>' +
+      '<a class="btn" href="https://docs.google.com/spreadsheets/d/' + CONFIG.SPREADSHEET_ID + '/edit" target="_blank">Buka DB Spreadsheet</a>' +
       '</div>' +
       '</div>' +
       '</body></html>'
@@ -179,9 +182,18 @@ function createJsonResponse(data) {
 }
 
 /**
- * Inisialisasi atau dapatkan Spreadsheet database di Google Drive folder
+ * Buka Spreadsheet Database berdasarkan ID resmi (1iRtT9aZ5czwy_xQxMThzjgM2Xfc5wwJMiH4mp85mLwo)
  */
-function getOrCreateDatabaseSheet() {
+function getOrCreateDatabaseSheet(customSpreadsheetId) {
+  var targetId = customSpreadsheetId || ACTIVE_SPREADSHEET_ID || CONFIG.SPREADSHEET_ID;
+  try {
+    var ssById = SpreadsheetApp.openById(targetId);
+    initSheets(ssById);
+    return ssById;
+  } catch (errById) {
+    Logger.log('Fallback to folder lookup after openById(' + targetId + '): ' + errById.toString());
+  }
+
   try {
     var folder = DriveApp.getFolderById(CONFIG.DRIVE_FOLDER_ID);
     var files = folder.getFilesByName(CONFIG.SPREADSHEET_NAME);
@@ -193,7 +205,6 @@ function getOrCreateDatabaseSheet() {
       var file = DriveApp.getFileById(ss.getId());
       file.moveTo(folder);
     }
-    // Pastikan struktur sheet dan 19 tim awal selalu terisi jika kosong
     initSheets(ss);
     return ss;
   } catch (err) {
@@ -381,7 +392,8 @@ function apiGetAppData() {
     judges: judgesData,
     evaluations: evalsData,
     folderId: CONFIG.DRIVE_FOLDER_ID,
-    spreadsheetUrl: ss ? ss.getUrl() : '',
+    spreadsheetId: ACTIVE_SPREADSHEET_ID || CONFIG.SPREADSHEET_ID,
+    spreadsheetUrl: ss ? ss.getUrl() : ('https://docs.google.com/spreadsheets/d/' + CONFIG.SPREADSHEET_ID + '/edit'),
     timestamp: new Date().toISOString()
   };
 }
@@ -410,7 +422,7 @@ function apiLogin(username, password) {
  * Simpan atau Perbarui Penilaian Juri
  */
 function apiSaveEvaluation(evaluationData) {
-  var ss = getOrCreateDatabaseSheet();
+  var ss = getOrCreateDatabaseSheet(evaluationData && evaluationData.spreadsheetId);
   var sheet = ss.getSheetByName('Evaluations') || ss.insertSheet('Evaluations');
   
   var rows = sheet.getDataRange().getValues();
@@ -446,7 +458,7 @@ function apiSaveEvaluation(evaluationData) {
     sheet.appendRow(rowValues);
   }
 
-  return { success: true, evalId: evalId };
+  return { success: true, evalId: evalId, spreadsheetId: ss.getId() };
 }
 
 /**
@@ -623,6 +635,10 @@ function doPost(e) {
       }
     } else {
       payload = e.parameter || {};
+    }
+
+    if (payload.spreadsheetId) {
+      ACTIVE_SPREADSHEET_ID = String(payload.spreadsheetId).trim();
     }
 
     var action = payload.action;

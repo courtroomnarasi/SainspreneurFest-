@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { UserCheck, CheckCircle2, Clock, AlertCircle, FileEdit, Download, Search, School, ExternalLink, Play, FileText, Video, FolderOpen, Eye } from 'lucide-react';
+import { UserCheck, CheckCircle2, Clock, AlertCircle, FileEdit, Download, Search, School, ExternalLink, Play, FileText, Video, FolderOpen, Eye, Database, CloudUpload, Check } from 'lucide-react';
 import { Team, Judge, Evaluation } from '../types';
 import { EvaluationForm } from './EvaluationForm';
 import { ArticlePreviewModal } from './ArticlePreviewModal';
 import { generateSchoolPDF } from '../utils/pdfGenerator';
 import { calculateSingleArticleScore, calculateSingleVideoScore } from '../utils/tieBreaker';
 import { DbLiveIndicator } from './DbLiveIndicator';
-import { INITIAL_TEAMS } from '../data/initialData';
+import { INITIAL_TEAMS, GOOGLE_SPREADSHEET_ID, GOOGLE_SPREADSHEET_URL } from '../data/initialData';
+import { CloudSync } from '../utils/cloudSync';
 
 interface JuriPortalProps {
   judge: Judge;
@@ -25,6 +26,10 @@ export const JuriPortal: React.FC<JuriPortalProps> = ({
   const [previewModalState, setPreviewModalState] = useState<{ team: Team; mode: 'pdf' | 'video' | 'summary' } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'unrated' | 'draft' | 'submitted'>('all');
+  const [isSyncingAll, setIsSyncingAll] = useState(false);
+  const [syncingTeamId, setSyncingTeamId] = useState<string | null>(null);
+  const [savedTeamIds, setSavedTeamIds] = useState<Record<string, boolean>>({});
+  const [dbSaveMessage, setDbSaveMessage] = useState<string | null>(null);
 
   const judgeEvaluations = evaluations.filter(
     e =>
@@ -36,6 +41,35 @@ export const JuriPortal: React.FC<JuriPortalProps> = ({
 
   const getTeamEvaluation = (teamId: string) => {
     return judgeEvaluations.find(e => e.teamId === teamId);
+  };
+
+  const handleSaveSingleTeamToDb = async (team: Team, ev: Evaluation) => {
+    setSyncingTeamId(team.id);
+    onSaveEvaluation(ev);
+    await CloudSync.pushSingleEvaluation(ev);
+    setSyncingTeamId(null);
+    setSavedTeamIds(prev => ({ ...prev, [team.id]: true }));
+    setDbSaveMessage(
+      `Penilaian ${team.code} (${team.school}) berhasil disimpan ke DB Spreadsheet ID: ${GOOGLE_SPREADSHEET_ID}`
+    );
+    setTimeout(() => {
+      setSavedTeamIds(prev => ({ ...prev, [team.id]: false }));
+    }, 3500);
+  };
+
+  const handleSaveAllJudgeEvalsToDb = async () => {
+    setIsSyncingAll(true);
+    setDbSaveMessage(null);
+    for (const ev of judgeEvaluations) {
+      onSaveEvaluation(ev);
+    }
+    const res = await CloudSync.pushAllDataToDb({ evaluations: judgeEvaluations });
+    setIsSyncingAll(false);
+    setDbSaveMessage(
+      res.success
+        ? `Seluruh ${judgeEvaluations.length} penilaian ${judge.name} berhasil disimpan ke DB Spreadsheet ID: ${GOOGLE_SPREADSHEET_ID}`
+        : res.message
+    );
   };
 
   // Enrich team with exact Drive file IDs from INITIAL_TEAMS if needed
@@ -93,6 +127,9 @@ export const JuriPortal: React.FC<JuriPortalProps> = ({
           existingEvaluation={existingEval}
           onSave={(ev) => {
             onSaveEvaluation(ev);
+            setDbSaveMessage(
+              `Penilaian ${enrichedSelected.code} (${enrichedSelected.school}) berhasil disimpan ke DB Spreadsheet ID: ${GOOGLE_SPREADSHEET_ID}`
+            );
             setSelectedTeam(null);
           }}
           onBack={() => setSelectedTeam(null)}
@@ -111,8 +148,8 @@ export const JuriPortal: React.FC<JuriPortalProps> = ({
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       {/* Welcome & Judge Profile Banner */}
-      <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl mb-8 relative overflow-hidden border border-blue-800">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl mb-6 relative overflow-hidden border border-blue-800">
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center font-bold text-2xl text-amber-400 shadow-inner">
               <UserCheck size={32} />
@@ -128,29 +165,87 @@ export const JuriPortal: React.FC<JuriPortalProps> = ({
               <p className="text-xs text-blue-200 mt-0.5">
                 {judge.institution} {judge.nip ? `• NIP: ${judge.nip}` : ''} • Username: <span className="font-mono text-amber-300 font-bold">{judge.username}</span>
               </p>
-              <div className="text-[11px] text-amber-300 font-semibold mt-1">
-                Keahlian: {judge.field}
+              <div className="text-[11px] text-amber-300 font-semibold mt-1 flex flex-wrap items-center gap-2">
+                <span>Keahlian: {judge.field}</span>
+                <span>•</span>
+                <span className="font-mono text-emerald-300">DB ID: {GOOGLE_SPREADSHEET_ID}</span>
               </div>
             </div>
           </div>
 
-          {/* Quick Metrics */}
-          <div className="grid grid-cols-3 gap-3 bg-white/10 backdrop-blur-xs p-3 rounded-2xl border border-white/10">
-            <div className="text-center px-3 py-1">
-              <div className="text-xl sm:text-2xl font-black text-emerald-400">{submittedCount}</div>
-              <div className="text-[11px] text-blue-100">Selesai Dinilai</div>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            {/* Quick Metrics */}
+            <div className="grid grid-cols-3 gap-3 bg-white/10 backdrop-blur-xs p-3 rounded-2xl border border-white/10">
+              <div className="text-center px-3 py-1">
+                <div className="text-xl sm:text-2xl font-black text-emerald-400">{submittedCount}</div>
+                <div className="text-[11px] text-blue-100">Selesai Dinilai</div>
+              </div>
+              <div className="text-center px-3 py-1 border-x border-white/15">
+                <div className="text-xl sm:text-2xl font-black text-amber-300">{draftCount}</div>
+                <div className="text-[11px] text-blue-100">Draft Tersimpan</div>
+              </div>
+              <div className="text-center px-3 py-1">
+                <div className="text-xl sm:text-2xl font-black text-white">{unratedCount}</div>
+                <div className="text-[11px] text-blue-100">Belum Dinilai</div>
+              </div>
             </div>
-            <div className="text-center px-3 py-1 border-x border-white/15">
-              <div className="text-xl sm:text-2xl font-black text-amber-300">{draftCount}</div>
-              <div className="text-[11px] text-blue-100">Draft Tersimpan</div>
-            </div>
-            <div className="text-center px-3 py-1">
-              <div className="text-xl sm:text-2xl font-black text-white">{unratedCount}</div>
-              <div className="text-[11px] text-blue-100">Belum Dinilai</div>
+
+            {/* Direct Save All to DB Spreadsheet Button */}
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={handleSaveAllJudgeEvalsToDb}
+                disabled={isSyncingAll}
+                className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                title={`Simpan seluruh ${judgeEvaluations.length} penilaian ke DB Spreadsheet ${GOOGLE_SPREADSHEET_ID}`}
+              >
+                <CloudUpload size={16} className={isSyncingAll ? 'animate-bounce' : ''} />
+                <span>{isSyncingAll ? 'Menyimpan ke DB...' : `Simpan Semua (${judgeEvaluations.length}) ke DB`}</span>
+              </button>
+              <a
+                href={GOOGLE_SPREADSHEET_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-amber-300 font-bold text-[11px] rounded-xl border border-white/15 flex items-center justify-center gap-1.5 transition-colors"
+                title={`Buka Google Spreadsheet ID: ${GOOGLE_SPREADSHEET_ID}`}
+              >
+                <Database size={12} />
+                <span>Buka DB Spreadsheet</span>
+                <ExternalLink size={11} />
+              </a>
             </div>
           </div>
         </div>
       </div>
+
+      {/* DB Save Feedback Toast Banner */}
+      {dbSaveMessage && (
+        <div className="mb-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-300 text-emerald-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-bold shadow-sm">
+          <div className="flex items-center gap-2.5">
+            <CheckCircle2 size={18} className="text-emerald-600 flex-shrink-0" />
+            <span>{dbSaveMessage}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <a
+              href={GOOGLE_SPREADSHEET_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg inline-flex items-center gap-1.5 whitespace-nowrap"
+            >
+              <Database size={12} />
+              <span>Lihat di Spreadsheet</span>
+              <ExternalLink size={11} />
+            </a>
+            <button
+              type="button"
+              onClick={() => setDbSaveMessage(null)}
+              className="px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-lg cursor-pointer"
+            >
+              Tutup
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Filter & Search Bar */}
       <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs mb-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
@@ -215,6 +310,8 @@ export const JuriPortal: React.FC<JuriPortalProps> = ({
           const ev = getTeamEvaluation(team.id);
           const isSubmitted = ev?.status === 'submitted';
           const isDraft = ev?.status === 'draft';
+          const isSyncingThis = syncingTeamId === team.id;
+          const isSavedThis = Boolean(savedTeamIds[team.id]);
 
           const artScore = ev ? calculateSingleArticleScore(ev.articleScore) : 0;
           const vidScore = ev ? calculateSingleVideoScore(ev.videoScore) : 0;
@@ -431,46 +528,43 @@ export const JuriPortal: React.FC<JuriPortalProps> = ({
                 </div>
 
                 {/* Actions */}
-                <div className="pt-3 border-t border-slate-100 flex items-center gap-2">
+                <div className="pt-3 border-t border-slate-100 flex items-center gap-1.5">
                   <button
                     onClick={() => setSelectedTeam(team)}
-                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    className={`flex-1 py-2.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                       isSubmitted
                         ? 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200'
                         : 'bg-blue-700 hover:bg-blue-800 text-white shadow-xs'
                     }`}
                   >
                     <FileEdit size={14} />
-                    <span>{isSubmitted ? 'Edit Penilaian' : 'Buka Lembar Penilaian'}</span>
+                    <span>{isSubmitted ? 'Edit Nilai' : 'Buka Penilaian'}</span>
                   </button>
 
-                  <a
-                    href={directArticleUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="p-2.5 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-xl border border-blue-200 transition-colors"
-                    title="Buka File Makalah PDF Peserta di Tab Baru"
-                  >
-                    <FileText size={16} />
-                  </a>
-
-                  <a
-                    href={directVideoUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="p-2.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl border border-red-200 transition-colors"
-                    title="Buka File Video MP4 Peserta di Tab Baru"
-                  >
-                    <Video size={16} />
-                  </a>
+                  {ev && (
+                    <button
+                      type="button"
+                      disabled={isSyncingThis}
+                      onClick={() => handleSaveSingleTeamToDb(team, ev)}
+                      className={`py-2.5 px-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer border ${
+                        isSavedThis
+                          ? 'bg-emerald-600 text-white border-emerald-700'
+                          : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300'
+                      }`}
+                      title={`Simpan penilaian ${team.code} ke DB Spreadsheet ID: ${GOOGLE_SPREADSHEET_ID}`}
+                    >
+                      {isSavedThis ? <Check size={14} /> : <Database size={14} />}
+                      <span>{isSyncingThis ? '...' : isSavedThis ? 'Tersimpan' : 'Simpan DB'}</span>
+                    </button>
+                  )}
 
                   {isSubmitted && (
                     <button
                       onClick={() => generateSchoolPDF(team, ev, evaluations, judge)}
-                      className="p-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl border border-emerald-200 transition-colors cursor-pointer"
+                      className="p-2.5 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-xl border border-blue-200 transition-colors cursor-pointer"
                       title="Unduh Lembar Penilaian PDF Sekolah ini"
                     >
-                      <Download size={16} />
+                      <Download size={15} />
                     </button>
                   )}
                 </div>

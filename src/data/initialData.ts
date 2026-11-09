@@ -1,6 +1,10 @@
 import { Team, Judge, Evaluation } from '../types';
 
 const envDriveFolderId = (import.meta as any).env?.VITE_DRIVE_FOLDER_ID || '1BfYaK-fIoJlfZNRhTzngN-pRzYv_7Ubb';
+export const GOOGLE_SPREADSHEET_ID =
+  (import.meta as any).env?.VITE_SPREADSHEET_ID ||
+  '1iRtT9aZ5czwy_xQxMThzjgM2Xfc5wwJMiH4mp85mLwo';
+export const GOOGLE_SPREADSHEET_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SPREADSHEET_ID}/edit`;
 export const GOOGLE_DRIVE_DB_URL = `https://drive.google.com/drive/folders/${envDriveFolderId}?usp=sharing`;
 export const APPS_SCRIPT_API_URL =
   (import.meta as any).env?.VITE_APPS_SCRIPT_URL ||
