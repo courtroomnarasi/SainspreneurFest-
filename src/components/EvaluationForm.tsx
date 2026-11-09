@@ -1163,6 +1163,24 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                 className="w-full text-xs p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 focus:outline-none"
               />
             </div>
+
+            {/* Pengesahan Lembar Penilaian: Ketua Tim Juri (Juri 1) & Dewan Juri Penilai */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-slate-200 text-xs text-slate-700">
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+                <div className="text-[11px] text-slate-500">Mengetahui,</div>
+                <div className="font-bold text-slate-800 uppercase mb-2">Ketua Tim Juri</div>
+                <div className="font-black text-blue-950 text-sm">Drs. Joni Suparman, M.Pd</div>
+                <div className="text-[11px] text-slate-600">Pengawas Dinas Pendidikan</div>
+                <div className="text-[11px] font-semibold text-slate-800 mt-0.5">NIP. 196706131999031004</div>
+              </div>
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 sm:text-right">
+                <div className="text-[11px] text-slate-500">Kabupaten Pasuruan, 13 November 2026</div>
+                <div className="font-bold text-slate-800 uppercase mb-2">Dewan Juri Penilai</div>
+                <div className="font-black text-blue-950 text-sm">{judge.name}</div>
+                <div className="text-[11px] text-slate-600">{judge.institution}</div>
+                <div className="text-[11px] font-semibold text-slate-800 mt-0.5">NIP. {judge.nip || '-'}</div>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -285,6 +285,41 @@ export const TopTenLeaderboard: React.FC<TopTenLeaderboardProps> = ({
                     </tbody>
                   </table>
                 </div>
+
+                {/* Pengesahan Tim Juri */}
+                <div className="px-6 py-5 bg-slate-50/90 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-6 text-xs text-slate-700">
+                  <div>
+                    <div className="text-slate-500 font-medium">Mengetahui,</div>
+                    <div className="font-bold text-slate-800 uppercase tracking-wide mb-3">
+                      Ketua Tim Juri
+                    </div>
+                    <div className="font-black text-blue-950 text-sm">
+                      Drs. Joni Suparman, M.Pd
+                    </div>
+                    <div className="text-[11px] text-slate-600">
+                      Pengawas Dinas Pendidikan
+                    </div>
+                    <div className="text-[11px] font-semibold text-slate-800 mt-0.5">
+                      NIP. 196706131999031004
+                    </div>
+                  </div>
+
+                  <div className="sm:text-right">
+                    <div className="text-slate-500 font-medium">Kabupaten Pasuruan, 13 November 2026</div>
+                    <div className="font-bold text-slate-800 uppercase tracking-wide mb-3">
+                      Dewan Juri Penilai
+                    </div>
+                    <div className="font-black text-blue-950 text-sm">
+                      Akhmad Nasor, M.Pd
+                    </div>
+                    <div className="text-[11px] text-slate-600">
+                      Kepala Sekolah
+                    </div>
+                    <div className="text-[11px] font-semibold text-slate-800 mt-0.5">
+                      NIP. 198704082019031001
+                    </div>
+                  </div>
+                </div>
               </div>
             </>
           )}

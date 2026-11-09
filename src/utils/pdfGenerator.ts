@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Team, Evaluation, Judge, TeamAggregatedScore } from '../types';
 import { ARTICLE_RUBRIC, VIDEO_RUBRIC } from '../data/rubricData';
+import { INITIAL_JUDGES } from '../data/initialData';
 import { calculateSingleArticleScore, calculateSingleVideoScore, calculateSingleFinalScore } from './tieBreaker';
 
 async function loadImageAsDataUrl(url: string): Promise<string | null> {
@@ -404,30 +405,44 @@ export async function generateSchoolPDF(
   doc.text(splitFeedback, 23, boxCommentY + 9);
 
   // Tanda Tangan
+  const chairJudge = INITIAL_JUDGES.find(j => j.username === 'juri-001') || INITIAL_JUDGES[0];
+  const matchedJudge =
+    judge ||
+    INITIAL_JUDGES.find(
+      j =>
+        j.id === evaluation?.judgeId ||
+        j.name.toLowerCase() === (evaluation?.judgeName || '').toLowerCase()
+    ) ||
+    INITIAL_JUDGES.find(j => j.username === 'juri-002') ||
+    INITIAL_JUDGES[1] ||
+    chairJudge;
+
   const sigY = boxCommentY + 23;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(30, 30, 30);
   doc.text('Mengetahui,', 30, sigY);
-  doc.text('Ketua Panitia Pasuruan Science Festival', 30, sigY + 4);
+  doc.text('Ketua Tim Juri', 30, sigY + 4);
   doc.text('Kabupaten Pasuruan, 13 November 2026', 130, sigY);
   doc.text('Dewan Juri Penilai,', 130, sigY + 4);
 
-  // Space for signatures
-  doc.setFont('helvetica', 'bold');
-  doc.text('M. SYAIFUDDIN, S.Pd., M.Si', 30, sigY + 24);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.text('Ketua MGMP IPA SMP Kab. Pasuruan', 30, sigY + 28);
-  doc.text('NIP. 19720315 199802 1 004', 30, sigY + 31.5);
-
+  // Space for signatures - Left: Ketua Tim Juri (Juri 1)
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text(judge ? judge.name : (evaluation?.judgeName || 'Dr. Bambang Hermanto, M.Si'), 130, sigY + 24);
+  doc.text(chairJudge?.name || 'Drs. Joni Suparman, M.Pd', 30, sigY + 24);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
-  doc.text(judge?.institution || 'Dewan Juri Ahli Sainspreneur', 130, sigY + 28);
-  doc.text(`NIP. ${judge?.nip || '19740512 200112 1 002'}`, 130, sigY + 31.5);
+  doc.text(chairJudge?.institution || 'Pengawas Dinas Pendidikan', 30, sigY + 28);
+  doc.text(`NIP. ${chairJudge?.nip || '196706131999031004'}`, 30, sigY + 31.5);
+
+  // Space for signatures - Right: Dewan Juri Penilai
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text(matchedJudge?.name || evaluation?.judgeName || 'Akhmad Nasor, M.Pd', 130, sigY + 24);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.text(matchedJudge?.institution || 'Dewan Juri Sainspreneur', 130, sigY + 28);
+  doc.text(`NIP. ${matchedJudge?.nip || '198704082019031001'}`, 130, sigY + 31.5);
 
   // Return generated PDF
   const filename = `Lembar_Penilaian_${team.code}_${team.school.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
@@ -502,10 +517,37 @@ export async function generateTopTenSummaryPDF(topTenList: TeamAggregatedScore[]
     body: rows
   });
 
-  const finalTableY = (doc as any).lastAutoTable.finalY + 8;
+  const finalTableY = (doc as any).lastAutoTable.finalY + 6;
   doc.setFontSize(8);
   doc.setFont('helvetica', 'italic');
+  doc.setTextColor(60, 60, 60);
   doc.text('* Penentuan urutan peringkat telah disinkronkan dengan aturan tie-breaker resmi (Sains & Inovasi -> Kelayakan Bisnis -> Pemanfaatan Bahan Lokal Pasuruan).', 18, finalTableY);
+
+  const chairJudge = INITIAL_JUDGES.find(j => j.username === 'juri-001') || INITIAL_JUDGES[0];
+  const secondJudge = INITIAL_JUDGES.find(j => j.username === 'juri-002') || INITIAL_JUDGES[1];
+  const sigTopY = finalTableY + 7;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(30, 30, 30);
+  doc.text('Mengetahui,', 35, sigTopY);
+  doc.text('Ketua Tim Juri', 35, sigTopY + 4.5);
+
+  doc.text('Kabupaten Pasuruan, 13 November 2026', 200, sigTopY);
+  doc.text('Dewan Juri Penilai,', 200, sigTopY + 4.5);
+
+  doc.setFont('helvetica', 'bold');
+  doc.text(chairJudge?.name || 'Drs. Joni Suparman, M.Pd', 35, sigTopY + 20);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.text(`NIP. ${chairJudge?.nip || '196706131999031004'}`, 35, sigTopY + 24);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.text(secondJudge?.name || 'Akhmad Nasor, M.Pd', 200, sigTopY + 20);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.text(`NIP. ${secondJudge?.nip || '198704082019031001'}`, 200, sigTopY + 24);
 
   doc.save('Klasemen_10_Besar_Sainspreneur_Pasuruan_2026.pdf');
 }
