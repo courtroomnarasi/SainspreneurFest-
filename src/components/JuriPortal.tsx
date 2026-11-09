@@ -26,7 +26,13 @@ export const JuriPortal: React.FC<JuriPortalProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'unrated' | 'draft' | 'submitted'>('all');
 
-  const judgeEvaluations = evaluations.filter(e => e.judgeId === judge.id);
+  const judgeEvaluations = evaluations.filter(
+    e =>
+      e.judgeId === judge.id ||
+      (judge.username.toLowerCase() === 'juri-002' &&
+        (e.judgeId === 'juri-1794186758033' ||
+          e.judgeName.toLowerCase().includes('akhmad nasor')))
+  );
 
   const getTeamEvaluation = (teamId: string) => {
     return judgeEvaluations.find(e => e.teamId === teamId);
@@ -74,7 +80,7 @@ export const JuriPortal: React.FC<JuriPortalProps> = ({
 
   const submittedCount = judgeEvaluations.filter(e => e.status === 'submitted').length;
   const draftCount = judgeEvaluations.filter(e => e.status === 'draft').length;
-  const unratedCount = teams.length - judgeEvaluations.length;
+  const unratedCount = Math.max(0, teams.length - judgeEvaluations.length);
 
   if (selectedTeam) {
     const enrichedSelected = getEnrichedTeam(selectedTeam);
@@ -120,7 +126,7 @@ export const JuriPortal: React.FC<JuriPortalProps> = ({
               </div>
               <h2 className="text-xl sm:text-2xl font-black">{judge.name}</h2>
               <p className="text-xs text-blue-200 mt-0.5">
-                {judge.institution} {judge.nip ? `• NIP: ${judge.nip}` : ''}
+                {judge.institution} {judge.nip ? `• NIP: ${judge.nip}` : ''} • Username: <span className="font-mono text-amber-300 font-bold">{judge.username}</span>
               </p>
               <div className="text-[11px] text-amber-300 font-semibold mt-1">
                 Keahlian: {judge.field}
@@ -391,19 +397,30 @@ export const JuriPortal: React.FC<JuriPortalProps> = ({
                     </a>
                   </div>
 
-                  {/* Score details if evaluated */}
+                  {/* Score details & Catatan Evaluasi Juri if evaluated */}
                   {ev ? (
-                    <div className="bg-blue-50/70 border border-blue-100 rounded-xl p-2.5 text-xs mb-3 flex items-center justify-between">
-                      <div>
-                        <div className="text-[10px] text-slate-500 font-medium">Artikel & Video</div>
-                        <div className="font-bold text-slate-800">
-                          {artScore} / {vidScore} Poin
+                    <div className="bg-blue-50/70 border border-blue-100 rounded-xl p-2.5 text-xs mb-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-[10px] text-slate-500 font-medium">Artikel & Video</div>
+                          <div className="font-bold text-slate-800">
+                            {artScore} / {vidScore} Poin
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-[10px] text-blue-700 font-bold uppercase">Skor Anda</div>
+                          <div className="text-base font-black text-blue-900">{approxTotal}</div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-[10px] text-blue-700 font-bold uppercase">Skor Anda</div>
-                        <div className="text-base font-black text-blue-900">{approxTotal}</div>
-                      </div>
+                      {ev.feedback && (
+                        <div className="pt-2 border-t border-blue-200/60 text-[11px] text-slate-700 leading-relaxed">
+                          <div className="flex items-center justify-between text-[10px] font-bold text-blue-900 mb-0.5">
+                            <span>Catatan Analisis Rubrik:</span>
+                            <span className="text-emerald-700">{ev.feedback.length}/200 kar.</span>
+                          </div>
+                          <p className="italic text-slate-700">{ev.feedback}</p>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="bg-amber-50/70 border border-amber-200/70 rounded-xl p-2 text-[11px] text-amber-900 mb-3 flex items-center gap-1.5">

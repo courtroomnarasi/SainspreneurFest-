@@ -97,10 +97,24 @@ export const Storage = {
           return u !== 'juri1' && u !== 'juri2' && u !== 'juri3' &&
                  id !== 'juri-1' && id !== 'juri-2' && id !== 'juri-3';
         });
-        if (filtered.length !== parsed.length) {
-          this.saveJudges(filtered);
+
+        // Deduplikasi berdasarkan username & pastikan INITIAL_JUDGES (juri-001 & juri-002) selalu ada
+        const byUsername = new Map<string, Judge>();
+        for (const ij of INITIAL_JUDGES) {
+          byUsername.set(ij.username.toLowerCase(), ij);
         }
-        return filtered;
+        for (const fj of filtered) {
+          if (fj.username) {
+            const key = fj.username.toLowerCase();
+            const official = INITIAL_JUDGES.find(ij => ij.username.toLowerCase() === key);
+            byUsername.set(key, official ? { ...official, ...fj, id: official.id } : fj);
+          }
+        }
+        const deduped = Array.from(byUsername.values());
+        if (deduped.length !== parsed.length || filtered.length === 0) {
+          this.saveJudges(deduped);
+        }
+        return deduped;
       }
     } catch (e) {
       console.error('Error reading judges:', e);
@@ -110,13 +124,45 @@ export const Storage = {
   },
 
   saveJudges(judges: Judge[]) {
-    localStorage.setItem(STORAGE_KEYS.JUDGES, JSON.stringify(judges));
+    const byUsername = new Map<string, Judge>();
+    for (const ij of INITIAL_JUDGES) {
+      byUsername.set(ij.username.toLowerCase(), ij);
+    }
+    for (const j of judges) {
+      if (!j.username) continue;
+      const key = j.username.toLowerCase();
+      if (key === 'juri1' || key === 'juri2' || key === 'juri3') continue;
+      const official = INITIAL_JUDGES.find(ij => ij.username.toLowerCase() === key);
+      byUsername.set(key, official ? { ...official, ...j, id: official.id } : j);
+    }
+    localStorage.setItem(STORAGE_KEYS.JUDGES, JSON.stringify(Array.from(byUsername.values())));
   },
 
   getEvaluations(): Evaluation[] {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.EVALUATIONS);
-      if (data) return JSON.parse(data);
+      if (data) {
+        const parsed: Evaluation[] = JSON.parse(data);
+        // Pastikan 19 penilaian resmi Juri 2 (Akhmad Nasor, M.Pd / juri-002) terintegrasi
+        let changed = false;
+        const merged = [...parsed];
+        for (const initEv of INITIAL_EVALUATIONS) {
+          const exists = merged.some(
+            e =>
+              e.teamId === initEv.teamId &&
+              (e.judgeId === initEv.judgeId ||
+                e.judgeName.toLowerCase().includes('akhmad nasor'))
+          );
+          if (!exists) {
+            merged.push(initEv);
+            changed = true;
+          }
+        }
+        if (changed) {
+          localStorage.setItem(STORAGE_KEYS.EVALUATIONS, JSON.stringify(merged));
+        }
+        return merged;
+      }
     } catch (e) {
       console.error('Error reading evaluations:', e);
     }
@@ -142,7 +188,13 @@ export const Storage = {
 
   saveEvaluation(evaluation: Evaluation) {
     const list = this.getEvaluations();
-    const idx = list.findIndex(e => e.teamId === evaluation.teamId && e.judgeId === evaluation.judgeId);
+    const idx = list.findIndex(
+      e =>
+        e.teamId === evaluation.teamId &&
+        (e.judgeId === evaluation.judgeId ||
+          (e.judgeName.toLowerCase().includes('akhmad nasor') &&
+            evaluation.judgeName.toLowerCase().includes('akhmad nasor')))
+    );
     if (idx >= 0) {
       list[idx] = evaluation;
     } else {

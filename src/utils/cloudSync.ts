@@ -238,18 +238,37 @@ export const CloudSync = {
           }
         }
 
-        // 3. Sinkronisasi Evaluations
+        // 3. Sinkronisasi Evaluations (Gabungkan penilaian DB & penilaian lokal seperti 19 penilaian Juri 2)
         if (Array.isArray(data.evaluations)) {
           if (data.evaluations.length > 0) {
-            const normalizedEvals = data.evaluations.map((rawEv: any) =>
+            const normalizedRemoteEvals = data.evaluations.map((rawEv: any) =>
               this.normalizeEvaluationFromSheet(rawEv, localEvals)
             );
-            Storage.saveEvaluations(normalizedEvals);
-            evalsUpdated = normalizedEvals.length;
-          } else if (localEvals.length > 0) {
+            const mergedEvals = [...normalizedRemoteEvals];
+            const unsyncedLocalEvals: Evaluation[] = [];
+
             for (const le of localEvals) {
-              this.pushSingleEvaluation(le).catch(() => {});
+              const existsInRemote = mergedEvals.some(
+                re =>
+                  re.teamId === le.teamId &&
+                  (re.judgeId === le.judgeId ||
+                    (re.judgeName.toLowerCase().includes('akhmad nasor') &&
+                      le.judgeName.toLowerCase().includes('akhmad nasor')))
+              );
+              if (!existsInRemote) {
+                mergedEvals.push(le);
+                unsyncedLocalEvals.push(le);
+              }
             }
+
+            Storage.saveEvaluations(mergedEvals);
+            evalsUpdated = mergedEvals.length;
+
+            if (unsyncedLocalEvals.length > 0) {
+              this.pushAllDataToDb({ evaluations: mergedEvals }).catch(() => {});
+            }
+          } else if (localEvals.length > 0) {
+            this.pushAllDataToDb({ evaluations: localEvals }).catch(() => {});
             evalsUpdated = localEvals.length;
           }
         }

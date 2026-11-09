@@ -6,7 +6,28 @@ export const APPS_SCRIPT_API_URL =
   (import.meta as any).env?.VITE_APPS_SCRIPT_URL ||
   'https://script.google.com/macros/s/AKfycbzu0sKXs_6zrBsQjAjnYYyEljVU7b4rNgfYinqpBkpF8m-hoEiWsdL6rhiGKZY8UNsyNA/exec';
 
-export const INITIAL_JUDGES: Judge[] = [];
+export const INITIAL_JUDGES: Judge[] = [
+  {
+    id: 'juri-1794186497902',
+    username: 'juri-001',
+    password: '@juri123',
+    name: 'Drs. Joni Suparman, M.Pd',
+    nip: '196706131999031004',
+    institution: 'Pengawas Dinas Pendidikan',
+    field: 'Sains & Inovasi Teknologi',
+    isActive: true
+  },
+  {
+    id: 'juri-1794186758033',
+    username: 'juri-002',
+    password: '@juri123',
+    name: 'Akhmad Nasor, M.Pd',
+    nip: '198704082019031001',
+    institution: 'Kepala Sekolah',
+    field: 'Sains & Inovasi Teknologi',
+    isActive: true
+  }
+];
 
 /**
  * 19 Tim Resmi Peserta Lomba Sainspreneur Pasuruan Science Festival 2026
@@ -587,5 +608,511 @@ export const INITIAL_TEAMS: Team[] = [
   }
 ];
 
-// No dummy evaluation scores! All scores are clean and will be filled dynamically by judges
-export const INITIAL_EVALUATIONS: Evaluation[] = [];
+const DEFAULT_ADMIN_VERIFIED = [
+  { id: 1, item: 'Peserta adalah siswa aktif SMP/MTs di Kabupaten Pasuruan (Maks. 3 orang/tim)', status: 'Ya' as const, keterangan: 'Terverifikasi sesuai biodata resmi peserta' },
+  { id: 2, item: 'Karya orisinal dan belum pernah menjuarai lomba sejenis tingkat Kabupaten/Provinsi', status: 'Ya' as const, keterangan: 'Orisinalitas terverifikasi lembar pernyataan' },
+  { id: 3, item: 'Format Artikel sesuai ketentuan (Kertas A4, Font Times New Roman 12pt, Spasi 1,5, PDF)', status: 'Ya' as const, keterangan: 'Format makalah PDF sesuai pedoman' },
+  { id: 4, item: 'Tautan Video dapat diakses dengan jelas (Resolusi minimal 720p, suara jernih)', status: 'Ya' as const, keterangan: 'Video MP4 Google Drive jernih & lancar' }
+];
+
+/**
+ * Penilaian Resmi Dewan Juri 2: Akhmad Nasor, M.Pd (username: juri-002, pass: @juri123)
+ * Mencakup seluruh 19 tim peserta (TIM-01 s/d TIM-19) berdasarkan analisis kisi-kisi & pedoman rubrik
+ * dengan catatan evaluasi <= 200 karakter per peserta.
+ */
+export const INITIAL_EVALUATIONS: Evaluation[] = [
+  {
+    id: 'eval-team-1-juri-1794186758033',
+    teamId: 'team-1',
+    judgeId: 'juri-1794186758033',
+    judgeName: 'Akhmad Nasor, M.Pd',
+    tahap: 'Tahap 2',
+    adminCheck: DEFAULT_ADMIN_VERIFIED,
+    articleScore: {
+      a1_1: 4, a1_2: 4, a1_3: 3,
+      a2_1: 4, a2_2: 3, a2_3: 4,
+      a3_1: 4, a3_2: 4,
+      a4_1: 4, a4_2: 3
+    },
+    videoScore: {
+      v1_1: 4, v1_2: 4,
+      v2_1: 4, v2_2: 3, v2_3: 4,
+      v3_1: 4, v3_2: 4,
+      v4_1: 3, v4_2: 4,
+      durationMinutes: 7,
+      durationSeconds: 20,
+      durationPenalty: 0
+    },
+    feedback: 'Sains komposit tebu-pinus (C/N rasio) sangat kuat & solutif bagi florikultura Prigen. Kalkulasi HPP Rp7.500 realistis, prototipe fungsional. Tingkatkan uji daya simpan kemasan biodegradable.',
+    status: 'submitted',
+    updatedAt: '2026-11-08T08:15:00.000Z'
+  },
+  {
+    id: 'eval-team-2-juri-1794186758033',
+    teamId: 'team-2',
+    judgeId: 'juri-1794186758033',
+    judgeName: 'Akhmad Nasor, M.Pd',
+    tahap: 'Tahap 2',
+    adminCheck: DEFAULT_ADMIN_VERIFIED,
+    articleScore: {
+      a1_1: 4, a1_2: 3, a1_3: 4,
+      a2_1: 3, a2_2: 4, a2_3: 3,
+      a3_1: 4, a3_2: 4,
+      a4_1: 3, a4_2: 4
+    },
+    videoScore: {
+      v1_1: 4, v1_2: 3,
+      v2_1: 4, v2_2: 3, v2_3: 4,
+      v3_1: 4, v3_2: 3,
+      v4_1: 4, v4_2: 3,
+      durationMinutes: 6,
+      durationSeconds: 45,
+      durationPenalty: 0
+    },
+    feedback: 'Ekstraksi maserasi kulit mangga Gadung Rejoso ke parfum bebas alkohol keras sangat inovatif. Konsep souvenir khas Pasuruan potensial. Perkuat uji ketahanan wangi & segel botol spray.',
+    status: 'submitted',
+    updatedAt: '2026-11-08T08:20:00.000Z'
+  },
+  {
+    id: 'eval-team-3-juri-1794186758033',
+    teamId: 'team-3',
+    judgeId: 'juri-1794186758033',
+    judgeName: 'Akhmad Nasor, M.Pd',
+    tahap: 'Tahap 2',
+    adminCheck: DEFAULT_ADMIN_VERIFIED,
+    articleScore: {
+      a1_1: 4, a1_2: 4, a1_3: 4,
+      a2_1: 3, a2_2: 4, a2_3: 4,
+      a3_1: 4, a3_2: 3,
+      a4_1: 4, a4_2: 3
+    },
+    videoScore: {
+      v1_1: 4, v1_2: 4,
+      v2_1: 4, v2_2: 4, v2_3: 3,
+      v3_1: 4, v3_2: 3,
+      v4_1: 3, v4_2: 4,
+      durationMinutes: 7,
+      durationSeconds: 10,
+      durationPenalty: 0
+    },
+    feedback: 'Substitusi tepung rebung Kejayan 40% pada kukis rendah glikemik sangat tepat ilmiah. Prosedur penghilangan langu di video jelas, kemasan pouch menarik. Lengkapi tabel informasi nilai gizi.',
+    status: 'submitted',
+    updatedAt: '2026-11-08T08:25:00.000Z'
+  },
+  {
+    id: 'eval-team-4-juri-1794186758033',
+    teamId: 'team-4',
+    judgeId: 'juri-1794186758033',
+    judgeName: 'Akhmad Nasor, M.Pd',
+    tahap: 'Tahap 2',
+    adminCheck: DEFAULT_ADMIN_VERIFIED,
+    articleScore: {
+      a1_1: 3, a1_2: 3, a1_3: 3,
+      a2_1: 3, a2_2: 3, a2_3: 3,
+      a3_1: 4, a3_2: 3,
+      a4_1: 3, a4_2: 3
+    },
+    videoScore: {
+      v1_1: 3, v1_2: 4,
+      v2_1: 3, v2_2: 3, v2_3: 3,
+      v3_1: 3, v3_2: 4,
+      v4_1: 3, v4_2: 3,
+      durationMinutes: 6,
+      durationSeconds: 30,
+      durationPenalty: 0
+    },
+    feedback: 'Pemanfaatan material ramah lingkungan lokal Gempol aplikatif. Tahapan pembuatan di video runtut & sesuai K3. Perjelas rincian HPP, analisis BEP, serta standarisasi estetika label kemasan.',
+    status: 'submitted',
+    updatedAt: '2026-11-08T08:30:00.000Z'
+  },
+  {
+    id: 'eval-team-5-juri-1794186758033',
+    teamId: 'team-5',
+    judgeId: 'juri-1794186758033',
+    judgeName: 'Akhmad Nasor, M.Pd',
+    tahap: 'Tahap 2',
+    adminCheck: DEFAULT_ADMIN_VERIFIED,
+    articleScore: {
+      a1_1: 4, a1_2: 4, a1_3: 4,
+      a2_1: 4, a2_2: 4, a2_3: 4,
+      a3_1: 4, a3_2: 4,
+      a4_1: 4, a4_2: 3
+    },
+    videoScore: {
+      v1_1: 4, v1_2: 4,
+      v2_1: 4, v2_2: 4, v2_3: 4,
+      v3_1: 4, v3_2: 4,
+      v4_1: 4, v4_2: 3,
+      durationMinutes: 7,
+      durationSeconds: 45,
+      durationPenalty: 0
+    },
+    feedback: 'Sinergi kitosan udang vaname Bangil & antioksidan kelor sangat unggul untuk cegah stunting. Video higienis, tekstur stik renyah, margin bisnis sehat. Siap hilirisasi ke UMKM lokal.',
+    status: 'submitted',
+    updatedAt: '2026-11-08T08:35:00.000Z'
+  },
+  {
+    id: 'eval-team-6-juri-1794186758033',
+    teamId: 'team-6',
+    judgeId: 'juri-1794186758033',
+    judgeName: 'Akhmad Nasor, M.Pd',
+    tahap: 'Tahap 2',
+    adminCheck: DEFAULT_ADMIN_VERIFIED,
+    articleScore: {
+      a1_1: 3, a1_2: 4, a1_3: 4,
+      a2_1: 4, a2_2: 3, a2_3: 3,
+      a3_1: 4, a3_2: 3,
+      a4_1: 4, a4_2: 3
+    },
+    videoScore: {
+      v1_1: 4, v1_2: 4,
+      v2_1: 3, v2_2: 4, v2_3: 3,
+      v3_1: 4, v3_2: 3,
+      v4_1: 3, v4_2: 4,
+      durationMinutes: 6,
+      durationSeconds: 50,
+      durationPenalty: 0
+    },
+    feedback: 'Formulasi fenolik sirih hijau & polisakarida lidah buaya efektif sebagai sanitizer non-iritasi. Tahapan dekoksi 90°C terukur, kemasan botol spray ergonomis. Tambahkan data uji organoleptik.',
+    status: 'submitted',
+    updatedAt: '2026-11-08T08:40:00.000Z'
+  },
+  {
+    id: 'eval-team-7-juri-1794186758033',
+    teamId: 'team-7',
+    judgeId: 'juri-1794186758033',
+    judgeName: 'Akhmad Nasor, M.Pd',
+    tahap: 'Tahap 2',
+    adminCheck: DEFAULT_ADMIN_VERIFIED,
+    articleScore: {
+      a1_1: 4, a1_2: 4, a1_3: 3,
+      a2_1: 3, a2_2: 3, a2_3: 4,
+      a3_1: 4, a3_2: 4,
+      a4_1: 3, a4_2: 4
+    },
+    videoScore: {
+      v1_1: 4, v1_2: 3,
+      v2_1: 4, v2_2: 3, v2_3: 3,
+      v3_1: 4, v3_2: 4,
+      v4_1: 4, v4_2: 3,
+      durationMinutes: 7,
+      durationSeconds: 15,
+      durationPenalty: 0
+    },
+    feedback: 'Pendekatan STEAM & ESD pada upcycling ampas eco-enzyme jadi bantal terapi aromaterapi sangat orisinal (zero-waste). Jahitan prototipe rapi; optimalkan kerapatan kemas dalam agar wangi awet.',
+    status: 'submitted',
+    updatedAt: '2026-11-08T08:45:00.000Z'
+  },
+  {
+    id: 'eval-team-8-juri-1794186758033',
+    teamId: 'team-8',
+    judgeId: 'juri-1794186758033',
+    judgeName: 'Akhmad Nasor, M.Pd',
+    tahap: 'Tahap 2',
+    adminCheck: DEFAULT_ADMIN_VERIFIED,
+    articleScore: {
+      a1_1: 4, a1_2: 4, a1_3: 4,
+      a2_1: 4, a2_2: 4, a2_3: 3,
+      a3_1: 4, a3_2: 4,
+      a4_1: 3, a4_2: 4
+    },
+    videoScore: {
+      v1_1: 4, v1_2: 4,
+      v2_1: 4, v2_2: 3, v2_3: 4,
+      v3_1: 4, v3_2: 4,
+      v4_1: 4, v4_2: 3,
+      durationMinutes: 6,
+      durationSeconds: 55,
+      durationPenalty: 0
+    },
+    feedback: 'Inovasi paper soap ekstrak tanin daun mangga Sukorejo sangat praktis & solutif cegah bakar sampah daun. Kelarutan kertas sabun baik, HPP Rp3.000 ekonomis. Tingkatkan ketahanan lembap kotak.',
+    status: 'submitted',
+    updatedAt: '2026-11-08T08:50:00.000Z'
+  },
+  {
+    id: 'eval-team-9-juri-1794186758033',
+    teamId: 'team-9',
+    judgeId: 'juri-1794186758033',
+    judgeName: 'Akhmad Nasor, M.Pd',
+    tahap: 'Tahap 2',
+    adminCheck: DEFAULT_ADMIN_VERIFIED,
+    articleScore: {
+      a1_1: 4, a1_2: 4, a1_3: 4,
+      a2_1: 3, a2_2: 4, a2_3: 3,
+      a3_1: 4, a3_2: 3,
+      a4_1: 4, a4_2: 3
+    },
+    videoScore: {
+      v1_1: 4, v1_2: 3,
+      v2_1: 4, v2_2: 4, v2_3: 3,
+      v3_1: 4, v3_2: 3,
+      v4_1: 3, v4_2: 4,
+      durationMinutes: 7,
+      durationSeconds: 5,
+      durationPenalty: 0
+    },
+    feedback: 'Pemanfaatan mangiferin kulit mangga Bangil pada roll-on deodoran non-aluminium sangat ilmiah. Uji stabilitas 14 hari terstruktur, tekstur tidak lengket. Perkuat desain segel kemasan botol.',
+    status: 'submitted',
+    updatedAt: '2026-11-08T08:55:00.000Z'
+  },
+  {
+    id: 'eval-team-10-juri-1794186758033',
+    teamId: 'team-10',
+    judgeId: 'juri-1794186758033',
+    judgeName: 'Akhmad Nasor, M.Pd',
+    tahap: 'Tahap 2',
+    adminCheck: DEFAULT_ADMIN_VERIFIED,
+    articleScore: {
+      a1_1: 4, a1_2: 4, a1_3: 4,
+      a2_1: 4, a2_2: 4, a2_3: 4,
+      a3_1: 4, a3_2: 4,
+      a4_1: 4, a4_2: 4
+    },
+    videoScore: {
+      v1_1: 4, v1_2: 4,
+      v2_1: 4, v2_2: 4, v2_3: 4,
+      v3_1: 4, v3_2: 4,
+      v4_1: 4, v4_2: 4,
+      durationMinutes: 7,
+      durationSeconds: 30,
+      durationPenalty: 0
+    },
+    feedback: 'Pengangkatan komoditas ikonik bunga sedap malam Kraton menjadi night lotion relaksasi bernilai ekonomi tinggi. Emulsi stabil pH aman, kemasan pump higienis & siap bersaing di pasar kosmetik.',
+    status: 'submitted',
+    updatedAt: '2026-11-08T09:00:00.000Z'
+  },
+  {
+    id: 'eval-team-11-juri-1794186758033',
+    teamId: 'team-11',
+    judgeId: 'juri-1794186758033',
+    judgeName: 'Akhmad Nasor, M.Pd',
+    tahap: 'Tahap 2',
+    adminCheck: DEFAULT_ADMIN_VERIFIED,
+    articleScore: {
+      a1_1: 3, a1_2: 3, a1_3: 3,
+      a2_1: 3, a2_2: 3, a2_3: 3,
+      a3_1: 4, a3_2: 3,
+      a4_1: 3, a4_2: 4
+    },
+    videoScore: {
+      v1_1: 3, v1_2: 3,
+      v2_1: 3, v2_2: 3, v2_3: 4,
+      v3_1: 4, v3_2: 3,
+      v4_1: 3, v4_2: 3,
+      durationMinutes: 6,
+      durationSeconds: 40,
+      durationPenalty: 0
+    },
+    feedback: 'Optimalisasi sumber daya hayati lokal Grati disajikan sistematis. Proses pengolahan di laboratorium higienis & komunikatif. Pertajam diferensiasi nilai unik produk serta rincian proyeksi BEP.',
+    status: 'submitted',
+    updatedAt: '2026-11-08T09:05:00.000Z'
+  },
+  {
+    id: 'eval-team-12-juri-1794186758033',
+    teamId: 'team-12',
+    judgeId: 'juri-1794186758033',
+    judgeName: 'Akhmad Nasor, M.Pd',
+    tahap: 'Tahap 2',
+    adminCheck: DEFAULT_ADMIN_VERIFIED,
+    articleScore: {
+      a1_1: 4, a1_2: 3, a1_3: 3,
+      a2_1: 3, a2_2: 4, a2_3: 3,
+      a3_1: 4, a3_2: 3,
+      a4_1: 3, a4_2: 4
+    },
+    videoScore: {
+      v1_1: 3, v1_2: 4,
+      v2_1: 4, v2_2: 3, v2_3: 3,
+      v3_1: 4, v3_2: 3,
+      v4_1: 3, v4_2: 4,
+      durationMinutes: 6,
+      durationSeconds: 50,
+      durationPenalty: 0
+    },
+    feedback: 'Konsep patch penyerap bau sepatu berbasis flora antibakteri Grati fungsional bagi pelajar. Mekanisme adsorpsi & pelepasan volatil logis. Tingkatkan daya rekat matriks patch pada sol sepatu.',
+    status: 'submitted',
+    updatedAt: '2026-11-08T09:10:00.000Z'
+  },
+  {
+    id: 'eval-team-13-juri-1794186758033',
+    teamId: 'team-13',
+    judgeId: 'juri-1794186758033',
+    judgeName: 'Akhmad Nasor, M.Pd',
+    tahap: 'Tahap 2',
+    adminCheck: DEFAULT_ADMIN_VERIFIED,
+    articleScore: {
+      a1_1: 4, a1_2: 4, a1_3: 4,
+      a2_1: 4, a2_2: 4, a2_3: 4,
+      a3_1: 4, a3_2: 4,
+      a4_1: 4, a4_2: 3
+    },
+    videoScore: {
+      v1_1: 4, v1_2: 4,
+      v2_1: 4, v2_2: 4, v2_3: 3,
+      v3_1: 4, v3_2: 4,
+      v4_1: 4, v4_2: 4,
+      durationMinutes: 7,
+      durationSeconds: 40,
+      durationPenalty: 0
+    },
+    feedback: 'Integrasi susu sapi segar Grati & mangga klonal melalui fermentasi asam laktat sangat tepat ilmiah. Prosedur pasteurisasi & inokulasi di video presisi, kelayakan bisnis & dampak lokal unggul.',
+    status: 'submitted',
+    updatedAt: '2026-11-08T09:15:00.000Z'
+  },
+  {
+    id: 'eval-team-14-juri-1794186758033',
+    teamId: 'team-14',
+    judgeId: 'juri-1794186758033',
+    judgeName: 'Akhmad Nasor, M.Pd',
+    tahap: 'Tahap 2',
+    adminCheck: DEFAULT_ADMIN_VERIFIED,
+    articleScore: {
+      a1_1: 4, a1_2: 4, a1_3: 3,
+      a2_1: 4, a2_2: 3, a2_3: 4,
+      a3_1: 4, a3_2: 3,
+      a4_1: 3, a4_2: 4
+    },
+    videoScore: {
+      v1_1: 4, v1_2: 3,
+      v2_1: 4, v2_2: 3, v2_3: 4,
+      v3_1: 4, v3_2: 3,
+      v4_1: 4, v4_2: 3,
+      durationMinutes: 7,
+      durationSeconds: 0,
+      durationPenalty: 0
+    },
+    feedback: 'Kombinasi adsorpsi karbon aktif & eugenol cengkeh-serai efektif hambat bakteri bau kaos kaki. Formulasi granul dalam pouch spunbond rapi & ekonomis. Tambahkan indikator masa pakai kantong.',
+    status: 'submitted',
+    updatedAt: '2026-11-08T09:20:00.000Z'
+  },
+  {
+    id: 'eval-team-15-juri-1794186758033',
+    teamId: 'team-15',
+    judgeId: 'juri-1794186758033',
+    judgeName: 'Akhmad Nasor, M.Pd',
+    tahap: 'Tahap 2',
+    adminCheck: DEFAULT_ADMIN_VERIFIED,
+    articleScore: {
+      a1_1: 4, a1_2: 4, a1_3: 4,
+      a2_1: 4, a2_2: 3, a2_3: 4,
+      a3_1: 4, a3_2: 4,
+      a4_1: 4, a4_2: 3
+    },
+    videoScore: {
+      v1_1: 4, v1_2: 4,
+      v2_1: 3, v2_2: 4, v2_3: 4,
+      v3_1: 4, v3_2: 4,
+      v4_1: 3, v4_2: 4,
+      durationMinutes: 7,
+      durationSeconds: 25,
+      durationPenalty: 0
+    },
+    feedback: 'Sangat kontekstual mengolah limbah kulit buah program MBG sekolah menjadi POC lewat fermentasi anaerob 21 hari. Solusi zero-waste nyata; lengkapi parameter pH/TDS akhir pada label jerigen.',
+    status: 'submitted',
+    updatedAt: '2026-11-08T09:25:00.000Z'
+  },
+  {
+    id: 'eval-team-16-juri-1794186758033',
+    teamId: 'team-16',
+    judgeId: 'juri-1794186758033',
+    judgeName: 'Akhmad Nasor, M.Pd',
+    tahap: 'Tahap 2',
+    adminCheck: DEFAULT_ADMIN_VERIFIED,
+    articleScore: {
+      a1_1: 4, a1_2: 3, a1_3: 4,
+      a2_1: 3, a2_2: 4, a2_3: 3,
+      a3_1: 4, a3_2: 4,
+      a4_1: 3, a4_2: 4
+    },
+    videoScore: {
+      v1_1: 4, v1_2: 4,
+      v2_1: 3, v2_2: 4, v2_3: 3,
+      v3_1: 4, v3_2: 3,
+      v4_1: 3, v4_2: 4,
+      durationMinutes: 6,
+      durationSeconds: 35,
+      durationPenalty: 0
+    },
+    feedback: 'Konversi pirolisis serasah daun mangga pesantren menjadi briket berkalori tinggi sangat solutif tekan polusi asap. Proses karbonisasi & pengepresan jelas. Perkuat kemasan box anti-lembap.',
+    status: 'submitted',
+    updatedAt: '2026-11-08T09:30:00.000Z'
+  },
+  {
+    id: 'eval-team-17-juri-1794186758033',
+    teamId: 'team-17',
+    judgeId: 'juri-1794186758033',
+    judgeName: 'Akhmad Nasor, M.Pd',
+    tahap: 'Tahap 2',
+    adminCheck: DEFAULT_ADMIN_VERIFIED,
+    articleScore: {
+      a1_1: 4, a1_2: 4, a1_3: 4,
+      a2_1: 4, a2_2: 4, a2_3: 3,
+      a3_1: 4, a3_2: 4,
+      a4_1: 4, a4_2: 3
+    },
+    videoScore: {
+      v1_1: 4, v1_2: 4,
+      v2_1: 4, v2_2: 3, v2_3: 4,
+      v3_1: 4, v3_2: 4,
+      v4_1: 4, v4_2: 3,
+      durationMinutes: 7,
+      durationSeconds: 15,
+      durationPenalty: 0
+    },
+    feedback: 'Inovasi pot biodegradable sabut kelapa Nguling & kotoran sapi Grati sangat aplikatif gantikan polybag plastik. Struktur pot kokoh & menyuburkan tanah. Standarisasi ketebalan cetak pot.',
+    status: 'submitted',
+    updatedAt: '2026-11-08T09:35:00.000Z'
+  },
+  {
+    id: 'eval-team-18-juri-1794186758033',
+    teamId: 'team-18',
+    judgeId: 'juri-1794186758033',
+    judgeName: 'Akhmad Nasor, M.Pd',
+    tahap: 'Tahap 2',
+    adminCheck: DEFAULT_ADMIN_VERIFIED,
+    articleScore: {
+      a1_1: 4, a1_2: 3, a1_3: 4,
+      a2_1: 4, a2_2: 3, a2_3: 4,
+      a3_1: 4, a3_2: 3,
+      a4_1: 3, a4_2: 4
+    },
+    videoScore: {
+      v1_1: 4, v1_2: 3,
+      v2_1: 4, v2_2: 4, v2_3: 3,
+      v3_1: 4, v3_2: 3,
+      v4_1: 4, v4_2: 3,
+      durationMinutes: 6,
+      durationSeconds: 50,
+      durationPenalty: 0
+    },
+    feedback: 'Sinergi enzim hidrolitik eco-enzyme & saponin lerak menghasilkan cairan pencuci piring ramah biota air. Efektivitas angkat lemak terbukti di video, HPP kompetitif. Tingkatkan viskositas.',
+    status: 'submitted',
+    updatedAt: '2026-11-08T09:40:00.000Z'
+  },
+  {
+    id: 'eval-team-19-juri-1794186758033',
+    teamId: 'team-19',
+    judgeId: 'juri-1794186758033',
+    judgeName: 'Akhmad Nasor, M.Pd',
+    tahap: 'Tahap 2',
+    adminCheck: DEFAULT_ADMIN_VERIFIED,
+    articleScore: {
+      a1_1: 4, a1_2: 4, a1_3: 3,
+      a2_1: 3, a2_2: 4, a2_3: 3,
+      a3_1: 4, a3_2: 4,
+      a4_1: 4, a4_2: 3
+    },
+    videoScore: {
+      v1_1: 4, v1_2: 3,
+      v2_1: 4, v2_2: 3, v2_3: 4,
+      v3_1: 4, v3_2: 4,
+      v4_1: 3, v4_2: 4,
+      durationMinutes: 6,
+      durationSeconds: 45,
+      durationPenalty: 0
+    },
+    feedback: 'Ekstraksi tanin & karbon kulit pisang Pandaan dengan matriks gum arabik jadi tinta spidol non-VOC sangat kreatif. Kepekatan pigmen baik & aplikatif bagi sekolah. Optimalkan filtrasi mikro.',
+    status: 'submitted',
+    updatedAt: '2026-11-08T09:45:00.000Z'
+  }
+];
