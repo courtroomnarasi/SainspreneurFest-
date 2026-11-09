@@ -246,30 +246,57 @@ export async function generateSchoolPDF(
     body: videoRows as any
   });
 
-  // BAGIAN D: BABAK FINAL
+  // BAGIAN D: BABAK FINAL (Verifikasi Fisik & Presentasi)
   const finalYAfterVideo = (doc as any).lastAutoTable.finalY;
   doc.setFillColor(235, 243, 255);
   doc.rect(20, finalYAfterVideo + 4, 170, 6, 'F');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9.5);
   doc.setTextColor(15, 45, 110);
-  doc.text('BAGIAN D. INSTRUMEN PENILAIAN BABAK FINAL (Verifikasi Fisik & Presentasi)', 22, finalYAfterVideo + 8.5);
+  doc.text('BAGIAN D. INSTRUMEN PENILAIAN BABAK FINAL (Verifikasi Fisik & Presentasi — Belum Dilaksanakan)', 22, finalYAfterVideo + 8.5);
 
   const finalScore = evaluation?.finalScore;
-  const f1Pts = ((finalScore?.f1 || 3) * 7.5);
-  const f2Pts = ((finalScore?.f2 || 3) * 7.5);
-  const f3Pts = ((finalScore?.f3 || 3) * 5.0);
-  const f4Pts = ((finalScore?.f4 || 3) * 5.0);
+  const hasFinalScore = Boolean(
+    finalScore && (finalScore.f1 > 0 || finalScore.f2 > 0 || finalScore.f3 > 0 || finalScore.f4 > 0)
+  );
+  const f1Pts = hasFinalScore && finalScore?.f1 ? finalScore.f1 * 7.5 : 0;
+  const f2Pts = hasFinalScore && finalScore?.f2 ? finalScore.f2 * 7.5 : 0;
+  const f3Pts = hasFinalScore && finalScore?.f3 ? finalScore.f3 * 5.0 : 0;
+  const f4Pts = hasFinalScore && finalScore?.f4 ? finalScore.f4 * 5.0 : 0;
   const totalFinalPts = f1Pts + f2Pts + f3Pts + f4Pts;
 
   const finalRows: any[] = [
-    ['F1', 'Sains & Inovasi Produk Fisik', '30%', `Skor: ${finalScore?.f1 || 3} (${f1Pts.toFixed(1)})`, f1Pts.toFixed(2)],
-    ['F2', 'Kelayakan Bisnis & Kemasan Fisik', '30%', `Skor: ${finalScore?.f2 || 3} (${f2Pts.toFixed(1)})`, f2Pts.toFixed(2)],
-    ['F3', 'Pemanfaatan Bahan Lokal Pasuruan', '20%', `Skor: ${finalScore?.f3 || 3} (${f3Pts.toFixed(1)})`, f3Pts.toFixed(2)],
-    ['F4', 'Presentasi, Penguasaan Materi & Tim', '20%', `Skor: ${finalScore?.f4 || 3} (${f4Pts.toFixed(1)})`, f4Pts.toFixed(2)],
+    [
+      'F1',
+      'Sains & Inovasi Produk Fisik',
+      '30%',
+      hasFinalScore && finalScore?.f1 ? `Skor: ${finalScore.f1} (${f1Pts.toFixed(1)})` : '-',
+      hasFinalScore && finalScore?.f1 ? f1Pts.toFixed(2) : '-'
+    ],
+    [
+      'F2',
+      'Kelayakan Bisnis & Kemasan Fisik',
+      '30%',
+      hasFinalScore && finalScore?.f2 ? `Skor: ${finalScore.f2} (${f2Pts.toFixed(1)})` : '-',
+      hasFinalScore && finalScore?.f2 ? f2Pts.toFixed(2) : '-'
+    ],
+    [
+      'F3',
+      'Pemanfaatan Bahan Lokal Pasuruan',
+      '20%',
+      hasFinalScore && finalScore?.f3 ? `Skor: ${finalScore.f3} (${f3Pts.toFixed(1)})` : '-',
+      hasFinalScore && finalScore?.f3 ? f3Pts.toFixed(2) : '-'
+    ],
+    [
+      'F4',
+      'Presentasi, Penguasaan Materi & Tim',
+      '20%',
+      hasFinalScore && finalScore?.f4 ? `Skor: ${finalScore.f4} (${f4Pts.toFixed(1)})` : '-',
+      hasFinalScore && finalScore?.f4 ? f4Pts.toFixed(2) : '-'
+    ],
     [
       { content: 'TOTAL NILAI PRODUK & PRESENTASI BABAK FINAL (Maksimal 100 Poin)', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold', fillColor: [240, 244, 255] } },
-      { content: totalFinalPts.toFixed(2), styles: { fontStyle: 'bold', fillColor: [220, 235, 255], textColor: [15, 45, 110] } }
+      { content: hasFinalScore ? totalFinalPts.toFixed(2) : '-', styles: { fontStyle: 'bold', fillColor: [220, 235, 255], textColor: [15, 45, 110], halign: 'center' } }
     ]
   ];
 
@@ -321,10 +348,10 @@ export async function generateSchoolPDF(
   const totalFinalRekap = prio1Sains + prio2Bisnis + prio3Lokal + prio4Pres;
 
   const rekapRows = [
-    ['Prioritas 1', '1. Sains & Inovasi', '30%', artA1.toFixed(2), vidV1.toFixed(2), finalScore ? f1Pts.toFixed(2) : '-', prio1Sains.toFixed(2)],
-    ['Prioritas 2', '2. Kelayakan Bisnis & Kemasan', '30%', artA2.toFixed(2), vidV2.toFixed(2), finalScore ? f2Pts.toFixed(2) : '-', prio2Bisnis.toFixed(2)],
-    ['Prioritas 3', '3. Pemanfaatan Bahan Lokal Pasuruan', '20%', artA3.toFixed(2), vidV3.toFixed(2), finalScore ? f3Pts.toFixed(2) : '-', prio3Lokal.toFixed(2)],
-    ['Non-Prioritas', '4. Presentasi & Sistematika Penulisan', '20%', artA4.toFixed(2), vidV4.toFixed(2), finalScore ? f4Pts.toFixed(2) : '-', prio4Pres.toFixed(2)],
+    ['Prioritas 1', '1. Sains & Inovasi', '30%', artA1.toFixed(2), vidV1.toFixed(2), hasFinalScore ? f1Pts.toFixed(2) : '-', prio1Sains.toFixed(2)],
+    ['Prioritas 2', '2. Kelayakan Bisnis & Kemasan', '30%', artA2.toFixed(2), vidV2.toFixed(2), hasFinalScore ? f2Pts.toFixed(2) : '-', prio2Bisnis.toFixed(2)],
+    ['Prioritas 3', '3. Pemanfaatan Bahan Lokal Pasuruan', '20%', artA3.toFixed(2), vidV3.toFixed(2), hasFinalScore ? f3Pts.toFixed(2) : '-', prio3Lokal.toFixed(2)],
+    ['Non-Prioritas', '4. Presentasi & Sistematika Penulisan', '20%', artA4.toFixed(2), vidV4.toFixed(2), hasFinalScore ? f4Pts.toFixed(2) : '-', prio4Pres.toFixed(2)],
     [
       { content: 'TOTAL NILAI AKHIR TIM PESERTA', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold', fillColor: [230, 240, 255] } },
       { content: totalFinalRekap.toFixed(2), styles: { fontStyle: 'bold', fillColor: [210, 230, 255], textColor: [15, 45, 110], halign: 'center' } }

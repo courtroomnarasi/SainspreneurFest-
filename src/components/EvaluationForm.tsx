@@ -94,10 +94,10 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     }
   );
 
-  // Bagian D State (Final - Optional)
+  // Bagian D State (Final & Presentasi - Kosongkan karena belum dilaksanakan)
   const [finalScore, setFinalScore] = useState<FinalScore>(
     existingEvaluation?.finalScore || {
-      f1: 3, f2: 3, f3: 3, f4: 3
+      f1: 0, f2: 0, f3: 0, f4: 0
     }
   );
 
@@ -169,7 +169,10 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     adminCheck: adminChecks,
     articleScore,
     videoScore,
-    finalScore: team.tahap === 'Final' ? finalScore : undefined,
+    finalScore:
+      finalScore.f1 > 0 || finalScore.f2 > 0 || finalScore.f3 > 0 || finalScore.f4 > 0
+        ? finalScore
+        : undefined,
     feedback,
     status,
     updatedAt: new Date().toISOString()
@@ -590,7 +593,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
               : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
           }`}
         >
-          Bagian D: Babak Final
+          Bagian D: Presentasi & Final ({totalFinal > 0 ? `${totalFinal} Poin` : 'Kosong'})
         </button>
         <button
           onClick={() => setActiveTab('E')}
@@ -1014,16 +1017,27 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
       {/* ---------------- TAB D: BABAK FINAL ---------------- */}
       {activeTab === 'D' && (
         <div className="space-y-6">
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs text-amber-900">
-            <span className="font-bold">Instrumen Babak Final (Pameran & Presentasi Langsung 18 Nov 2026):</span>
-            <p className="mt-1">
-              Bagian ini digunakan dewan juri untuk menilai 10 Besar Finalis saat pameran produk fisik dan uji materi langsung.
-            </p>
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <span className="font-bold">Instrumen Babak Final (Pameran & Presentasi Langsung — Belum Dilaksanakan):</span>
+              <p className="mt-1">
+                Tahap presentasi dan verifikasi fisik produk belum dilaksanakan, sehingga nilai pada bagian ini dikosongkan terlebih dahulu (`-`).
+              </p>
+            </div>
+            {(finalScore.f1 > 0 || finalScore.f2 > 0 || finalScore.f3 > 0 || finalScore.f4 > 0) && (
+              <button
+                type="button"
+                onClick={() => setFinalScore({ f1: 0, f2: 0, f3: 0, f4: 0 })}
+                className="px-3 py-1.5 bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl font-bold text-xs whitespace-nowrap cursor-pointer"
+              >
+                Kosongkan Nilai Presentasi
+              </button>
+            )}
           </div>
 
           {FINAL_RUBRIC.map(item => {
-            const currentScore = (finalScore as any)[item.id] || 3;
-            const pts = (item.levels as any)[currentScore]?.points || 0;
+            const currentScore = (finalScore as any)[item.id] || 0;
+            const pts = currentScore > 0 ? (item.levels as any)[currentScore]?.points || 0 : 0;
 
             return (
               <div
@@ -1039,7 +1053,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                     <span className="text-xs text-slate-500">Bobot: {item.weight}%</span>
                   </div>
                   <div className="text-sm font-black text-blue-900">
-                    Nilai: {pts.toFixed(2)} / {item.weight}
+                    Nilai: {currentScore > 0 ? pts.toFixed(2) : '-'} / {item.weight}
                   </div>
                 </div>
 
@@ -1048,11 +1062,16 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                     <button
                       key={s}
                       type="button"
-                      onClick={() => setFinalScore(prev => ({ ...prev, [item.id]: s }))}
-                      className={`p-2.5 rounded-xl text-left border ${
+                      onClick={() =>
+                        setFinalScore(prev => ({
+                          ...prev,
+                          [item.id]: (prev as any)[item.id] === s ? 0 : s
+                        }))
+                      }
+                      className={`p-2.5 rounded-xl text-left border cursor-pointer ${
                         currentScore === s
                           ? 'bg-purple-900 text-white border-purple-900 shadow-sm'
-                          : 'bg-slate-50 text-slate-700 border-slate-200'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                       }`}
                     >
                       <div className="text-xs font-bold">Skor {s}</div>
@@ -1064,7 +1083,15 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                 </div>
 
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-700">
-                  <strong>Rubrik:</strong> {item.levels[currentScore as 1 | 2 | 3 | 4].desc}
+                  {currentScore > 0 ? (
+                    <>
+                      <strong>Rubrik:</strong> {item.levels[currentScore as 1 | 2 | 3 | 4].desc}
+                    </>
+                  ) : (
+                    <span className="italic text-slate-500">
+                      Belum diisi (Tahap presentasi & pameran fisik belum dilaksanakan).
+                    </span>
+                  )}
                 </div>
               </div>
             );
