@@ -1138,28 +1138,28 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
               </table>
             </div>
 
-            {/* Catatan Juri (Maksimal 200 Karakter sesuai Kisi-kisi & Pedoman Penilaian) */}
+            {/* Catatan Juri (Maksimal 250 Karakter sesuai Kisi-kisi & Pedoman Penilaian) */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-xs font-bold text-slate-800 uppercase">
-                  Catatan Evaluasi & Analisis Kisi-kisi Dewan Juri (Maks. 200 Karakter):
+                  Catatan Evaluasi & Analisis Kisi-kisi Dewan Juri (Maks. 250 Karakter):
                 </label>
                 <span
                   className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
-                    feedback.length > 190
+                    feedback.length > 240
                       ? 'bg-amber-100 text-amber-800'
                       : 'bg-emerald-100 text-emerald-800'
                   }`}
                 >
-                  {feedback.length} / 200 karakter
+                  {feedback.length} / 250 karakter
                 </span>
               </div>
               <textarea
                 rows={3}
-                maxLength={200}
+                maxLength={250}
                 value={feedback}
-                onChange={e => setFeedback(e.target.value.slice(0, 200))}
-                placeholder="Tuliskan catatan analisis sesuai kisi-kisi & pedoman penilaian (maks. 200 karakter)..."
+                onChange={e => setFeedback(e.target.value.slice(0, 250))}
+                placeholder="Tuliskan catatan analisis sesuai kisi-kisi & pedoman penilaian (maks. 250 karakter)..."
                 className="w-full text-xs p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 focus:outline-none"
               />
             </div>

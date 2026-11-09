@@ -544,7 +544,7 @@ export const JuriPortal: React.FC<JuriPortalProps> = ({
                         <div className="pt-2 border-t border-blue-200/60 text-[11px] text-slate-700 leading-relaxed">
                           <div className="flex items-center justify-between text-[10px] font-bold text-blue-900 mb-0.5">
                             <span>Catatan Analisis Rubrik:</span>
-                            <span className="text-emerald-700">{ev.feedback.length}/200 kar.</span>
+                            <span className="text-emerald-700">{ev.feedback.length}/250 kar.</span>
                           </div>
                           <p className="italic text-slate-700">{ev.feedback}</p>
                         </div>

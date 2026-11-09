@@ -2,14 +2,14 @@ import { Team, Judge, Evaluation, BackgroundConfig, DEFAULT_BACKGROUND_CONFIG } 
 import { INITIAL_TEAMS, INITIAL_JUDGES, INITIAL_EVALUATIONS } from '../data/initialData';
 
 const STORAGE_KEYS = {
-  TEAMS: 'psf26_teams_v3',
-  JUDGES: 'psf26_judges_v3',
-  EVALUATIONS: 'psf26_evaluations_v3',
-  CURRENT_USER: 'psf26_session_v3',
-  ACTIVE_TAB: 'psf26_active_tab_v3',
-  IS_PUBLISHED: 'psf26_is_published_v3',
-  GAS_SYNC_TIMESTAMP: 'psf26_gas_synced_v3',
-  BG_CONFIG: 'psf26_bg_config_v3'
+  TEAMS: 'psf26_teams_v4',
+  JUDGES: 'psf26_judges_v4',
+  EVALUATIONS: 'psf26_evaluations_v4',
+  CURRENT_USER: 'psf26_session_v4',
+  ACTIVE_TAB: 'psf26_active_tab_v4',
+  IS_PUBLISHED: 'psf26_is_published_v4',
+  GAS_SYNC_TIMESTAMP: 'psf26_gas_synced_v4',
+  BG_CONFIG: 'psf26_bg_config_v4'
 };
 
 export const Storage = {
@@ -167,7 +167,7 @@ export const Storage = {
       const data = localStorage.getItem(STORAGE_KEYS.IS_PUBLISHED);
       if (data !== null) return JSON.parse(data);
     } catch (e) {}
-    return false; // Default: unpublish until admin or judge finalizes
+    return true; // Default: publish official Top 10 leaderboard & evaluations
   },
 
   saveIsResultsPublished(isPublished: boolean) {
