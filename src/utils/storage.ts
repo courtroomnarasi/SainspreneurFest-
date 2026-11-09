@@ -2,14 +2,14 @@ import { Team, Judge, Evaluation, BackgroundConfig, DEFAULT_BACKGROUND_CONFIG } 
 import { INITIAL_TEAMS, INITIAL_JUDGES, INITIAL_EVALUATIONS } from '../data/initialData';
 
 const STORAGE_KEYS = {
-  TEAMS: 'psf26_teams_v4',
-  JUDGES: 'psf26_judges_v4',
-  EVALUATIONS: 'psf26_evaluations_v4',
-  CURRENT_USER: 'psf26_session_v4',
-  ACTIVE_TAB: 'psf26_active_tab_v4',
-  IS_PUBLISHED: 'psf26_is_published_v4',
-  GAS_SYNC_TIMESTAMP: 'psf26_gas_synced_v4',
-  BG_CONFIG: 'psf26_bg_config_v4'
+  TEAMS: 'psf26_teams_v5',
+  JUDGES: 'psf26_judges_v5',
+  EVALUATIONS: 'psf26_evaluations_v5',
+  CURRENT_USER: 'psf26_session_v5',
+  ACTIVE_TAB: 'psf26_active_tab_v5',
+  IS_PUBLISHED: 'psf26_is_published_v5',
+  GAS_SYNC_TIMESTAMP: 'psf26_gas_synced_v5',
+  BG_CONFIG: 'psf26_bg_config_v5'
 };
 
 export const Storage = {
